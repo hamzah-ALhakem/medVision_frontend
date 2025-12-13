@@ -11,23 +11,23 @@ export default function DashboardLayout() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 
-    //   // 1. Check for User Data
-    //   const user = JSON.parse(localStorage.getItem('user'));
-    //   const token = localStorage.getItem('token');
+      // 1. Check for User Data
+      const user = JSON.parse(localStorage.getItem('user'));
+      const token = localStorage.getItem('token');
 
-    //   // 2. Protect the Route (Redirect to Login if no token)
-    //   if (!token || !user) {
-    //     return <Navigate to="/login" replace />;
-    //   }
+      // 2. Protect the Route (Redirect to Login if no token)
+      if (!token || !user) {
+        return <Navigate to="/login" replace />;
+      }
 
 
-    // Fake user for testing UI
-    const user = {
-        firstName: "Hamzah",
-        lastName: "Developer",
-        role: "doctor" // 'patient' or 'doctor'
-    };
-    // ------------------------------------
+    // // Fake user for testing UI
+    // const user = {
+    //     firstName: "Hamzah",
+    //     lastName: "Developer",
+    //     role: "doctor" // 'patient' or 'doctor'
+    // };
+    // // ------------------------------------
 
 
 
