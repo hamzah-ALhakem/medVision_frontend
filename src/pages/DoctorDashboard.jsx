@@ -1,26 +1,51 @@
 // src/pages/DoctorDashboard.jsx
-import React from 'react';
-import { Users, FileText, Search, AlertCircle } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Users, FileText, Search, Check, X, Clock, Calendar, Loader2 } from 'lucide-react';
+import api from '../services/api';
 
 export default function DoctorDashboard() {
-  const stats = [
-    { label: 'Total Patients', value: '142', icon: Users, color: 'bg-blue-500', trend: '+12% this month' },
-    { label: 'Pending Reviews', value: '8', icon: FileText, color: 'bg-amber-500', trend: 'Needs attention' },
-    { label: 'Critical Cases', value: '3', icon: AlertCircle, color: 'bg-red-500', trend: 'High Priority' },
-  ];
+  const [appointments, setAppointments] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
 
-  const patients = [
-    { id: 1, name: 'Sarah Ahmed', age: 34, date: 'Dec 11, 2025', result: 'High Risk', confidence: '89%', status: 'Unreviewed' },
-    { id: 2, name: 'Layla Mahmoud', age: 45, date: 'Dec 10, 2025', result: 'Benign', confidence: '96%', status: 'Reviewed' },
-    { id: 3, name: 'Noor Ali', age: 29, date: 'Dec 09, 2025', result: 'Benign', confidence: '94%', status: 'Reviewed' },
-    { id: 4, name: 'Fatima Hassan', age: 52, date: 'Dec 08, 2025', result: 'High Risk', confidence: '91%', status: 'In Progress' },
-  ];
+  // 1. Fetch Appointments from API
+  const fetchAppointments = async () => {
+    try {
+      const res = await api.get('/appointments');
+      setAppointments(res.data);
+    } catch (err) {
+      console.error("Failed to load appointments", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  // 2. Handle Accept/Reject
+  const handleStatusUpdate = async (id, newStatus) => {
+    setActionLoading(id);
+    try {
+        await api.put(`/appointments/${id}/status`, { status: newStatus });
+        // Update UI locally
+        setAppointments(prev => prev.map(apt => 
+            apt.id === id ? { ...apt, status: newStatus } : apt
+        ));
+    } catch (err) {
+        alert("Failed to update status");
+    } finally {
+        setActionLoading(null);
+    }
+  };
+
+  // Helper for Status Colors
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Unreviewed': return 'bg-amber-100 text-amber-700';
-      case 'High Risk': return 'bg-red-100 text-red-700';
-      case 'Benign': return 'bg-emerald-100 text-emerald-700';
+      case 'pending': return 'bg-amber-100 text-amber-700';
+      case 'confirmed': return 'bg-emerald-100 text-emerald-700';
+      case 'cancelled': return 'bg-red-100 text-red-700';
       default: return 'bg-slate-100 text-slate-600';
     }
   };
@@ -28,35 +53,11 @@ export default function DoctorDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
-      {/* Stats */}
-      <div>
-        <h1 className="text-2xl font-bold text-primary mb-6">Doctor's Overview</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between group hover:shadow-md transition-all">
-              <div>
-                <p className="text-slate-500 text-sm font-medium mb-1">{stat.label}</p>
-                <h3 className="text-3xl font-bold text-primary">{stat.value}</h3>
-                <p className={`text-xs mt-2 font-medium ${stat.label === 'Critical Cases' ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {stat.trend}
-                </p>
-              </div>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white ${stat.color} shadow-lg opacity-90 group-hover:scale-110 transition-transform`}>
-                <stat.icon size={24} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold text-primary mb-6">Patient Appointments</h1>
 
-      {/* Patient List */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <h3 className="text-lg font-bold text-primary">Recent Screenings</h3>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input type="text" placeholder="Search patients..." className="pl-10 pr-4 py-2 bg-surface-muted border-none rounded-xl text-sm focus:ring-2 focus:ring-accent w-full outline-none"/>
-          </div>
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="text-lg font-bold text-primary">Requests & Visits</h3>
         </div>
 
         <div className="overflow-x-auto">
@@ -64,41 +65,73 @@ export default function DoctorDashboard() {
             <thead className="bg-surface-muted text-xs uppercase text-slate-500 font-semibold tracking-wider">
               <tr>
                 <th className="px-6 py-4">Patient Name</th>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">AI Prediction</th>
-                <th className="px-6 py-4">Confidence</th>
+                <th className="px-6 py-4">Date & Time</th>
                 <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4">Reason</th>
+                <th className="px-6 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {patients.map((patient) => (
-                <tr key={patient.id} className="hover:bg-slate-50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-accent/10 text-accent flex items-center justify-center font-bold text-xs">
-                        {patient.name.substring(0,2).toUpperCase()}
-                      </div>
+              {isLoading ? (
+                  <tr><td colSpan="5" className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-accent"/></td></tr>
+              ) : appointments.length > 0 ? (
+                appointments.map((apt) => (
+                  <tr key={apt.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4">
                       <div>
-                        <p className="font-semibold text-primary">{patient.name}</p>
-                        <p className="text-xs text-slate-400">{patient.age} yrs</p>
+                        <p className="font-semibold text-primary">{apt.first_name} {apt.last_name}</p>
+                        <p className="text-xs text-slate-400">{apt.phone}</p>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{patient.date}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${getStatusColor(patient.result)}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${patient.result === 'High Risk' ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                      {patient.result}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-slate-700">{patient.confidence}</td>
-                  <td className="px-6 py-4">
-                     <span className={`px-2 py-1 rounded text-xs font-semibold ${patient.status === 'Unreviewed' ? 'bg-amber-50 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
-                       {patient.status}
-                     </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                            <span className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                                <Calendar size={14} className="text-accent"/> 
+                                {new Date(apt.appointment_date).toLocaleDateString()}
+                            </span>
+                            <span className="flex items-center gap-1 text-xs text-slate-500">
+                                <Clock size={14}/> 
+                                {apt.appointment_time.slice(0, 5)} {/* Shows Start Time */}
+                            </span>
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold capitalize ${getStatusColor(apt.status)}`}>
+                        {apt.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 max-w-xs">
+                        <p className="text-sm text-slate-600 truncate" title={apt.reason}>{apt.reason || 'No reason provided'}</p>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {apt.status === 'pending' ? (
+                        <div className="flex items-center justify-center gap-2">
+                           <button 
+                             onClick={() => handleStatusUpdate(apt.id, 'confirmed')}
+                             disabled={actionLoading === apt.id}
+                             className="p-2 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-colors"
+                             title="Accept"
+                           >
+                             {actionLoading === apt.id ? <Loader2 size={16} className="animate-spin"/> : <Check size={16} />}
+                           </button>
+                           <button 
+                             onClick={() => handleStatusUpdate(apt.id, 'cancelled')}
+                             disabled={actionLoading === apt.id}
+                             className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                             title="Decline"
+                           >
+                             <X size={16} />
+                           </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr><td colSpan="5" className="p-8 text-center text-slate-400">No appointments found.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

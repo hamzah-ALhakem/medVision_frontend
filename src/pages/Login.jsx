@@ -1,128 +1,120 @@
 // src/pages/Login.jsx
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, ShieldCheck, AlertCircle } from 'lucide-react';
-import api from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import api from '../services/api';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
+    setError('');
 
     try {
-      // 1. Send data to Backend
       const response = await api.post('/auth/login', formData);
+      
+      // Save data
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
 
-      // 2. On Success: Save Token & Role
-      const { token, user } = response.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-
-      // 3. Redirect based on Role
-      if (user.role === 'doctor') navigate('/doctor-dashboard');
-      else if (user.role === 'patient') navigate('/patient-dashboard');
-      else navigate('/admin-dashboard');
-
+      // Redirect based on role
+      if (response.data.user.role === 'doctor') {
+        navigate('/doctor-dashboard');
+      } else {
+        navigate('/patient-dashboard');
+      }
     } catch (err) {
-      // 4. Handle Errors (like "Account not approved")
-      const msg = err.response?.data?.message || 'Connection failed. Is the backend running?';
-      setError(msg);
+      setError(err.response?.data?.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-surface-muted to-accent-soft/30">
-      {/* Main Card */}
-      <div className="w-full max-w-5xl bg-white rounded-[2rem] shadow-premium overflow-hidden grid md:grid-cols-2 min-h-[600px]">
-
-        {/* Left Side: Brand/Visual */}
-        <div className="bg-primary p-12 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80')] opacity-10 bg-cover bg-center" />
-
-          <div className="relative z-10">
-            <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center mb-6">
-              <ShieldCheck size={28} className="text-white" />
-            </div>
-            <h1 className="text-4xl font-bold mb-4">MedVision AI</h1>
-            <p className="text-primary-foreground/70 text-lg">Next-generation breast cancer screening powered by advanced machine learning.</p>
-          </div>
-
-          <div className="relative z-10 space-y-4">
-            <div className="flex items-center gap-3 text-sm opacity-80">
-              <div className="w-8 h-[1px] bg-white/50" />
-              <span>Secure HIPAA Compliant</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm opacity-80">
-              <div className="w-8 h-[1px] bg-white/50" />
-              <span>94% Model Accuracy</span>
-            </div>
-          </div>
+    <div className="min-h-screen grid lg:grid-cols-2">
+      
+      {/* 1. Left Side - Visuals Only (Text Removed) */}
+      <div className="hidden lg:flex col-span-1 bg-primary relative overflow-hidden items-center justify-center">
+        {/* Abstract Shapes/Background Effects */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/10 rounded-full blur-2xl translate-y-1/3 -translate-x-1/3"></div>
+        
+        {/* Central Logo/Icon (Optional - kept only if you want an image, otherwise empty) */}
+        <div className="relative z-10 w-32 h-32 rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-2xl">
+           <div className="w-16 h-16 bg-accent rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-3xl">M</span>
+           </div>
         </div>
+      </div>
 
-        {/* Right Side: Form */}
-        <div className="p-12 flex flex-col justify-center">
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-primary mb-2">Welcome Back</h2>
-            <p className="text-primary/60">Please sign in to access your dashboard.</p>
+      {/* 2. Right Side - Login Form */}
+      <div className="col-span-1 flex items-center justify-center p-8 bg-surface">
+        <div className="w-full max-w-md space-y-8 animate-in fade-in slide-in-from-right-8 duration-500">
+          
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-primary">Welcome back</h2>
+            <p className="text-slate-500 mt-2">Please enter your details to sign in.</p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle size={20} className="shrink-0 mt-0.5" />
-              <p className="text-sm font-medium">{error}</p>
+            <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm animate-in zoom-in-95">
+              <AlertCircle size={18} />
+              {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input 
-              label="Email Address" 
+              label="Email" 
               type="email" 
-              placeholder="name@hospital.com"
+              placeholder="Enter your email" 
               icon={Mail}
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
               required
             />
-
+            
             <div className="space-y-2">
-              <Input 
+               <Input 
                 label="Password" 
                 type="password" 
-                placeholder="••••••••"
+                placeholder="••••••••" 
                 icon={Lock}
                 value={formData.password}
                 onChange={(e) => setFormData({...formData, password: e.target.value})}
                 required
               />
               <div className="flex justify-end">
-                <a href="#" className="text-sm text-accent hover:text-accent/80 font-medium">Forgot Password?</a>
+                <Link to="/forgot-password" class="text-xs font-semibold text-accent hover:text-accent/80">
+                  Forgot password?
+                </Link>
               </div>
             </div>
 
-            <Button type="submit" isLoading={isLoading}>
-              Sign In to Dashboard
+            <Button type="submit" isLoading={isLoading} className="w-full py-4 text-base">
+              Sign in <ArrowRight size={18} />
             </Button>
           </form>
 
-          <div className="mt-8 text-center text-sm text-primary/60">
+          <p className="text-center text-sm text-slate-500">
             Don't have an account?{' '}
-            <Link to="/signup" className="text-accent font-semibold hover:underline">
-              Create Account
+            <Link to="/signup" className="font-bold text-accent hover:underline">
+              Sign up for free
             </Link>
-          </div>
+          </p>
         </div>
-
       </div>
+
     </div>
   );
 }
