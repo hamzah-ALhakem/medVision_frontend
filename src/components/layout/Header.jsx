@@ -1,6 +1,5 @@
-// src/components/layout/Header.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Menu, Search, X } from 'lucide-react';
+import { Bell, Menu, Search, X, Check, MessageSquare, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -10,22 +9,22 @@ export default function Header({ user, onMenuClick }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null); 
   
-  // 1. Fetch Notifications (Poll every 3s)
+  const firstName = user?.firstName || 'Guest';
+
+  // 1. Polling
   useEffect(() => {
-    const fetchNotifs = async () => {
-      // Only fetch if dropdown is CLOSED (to prevent list vanishing while reading)
-      if (!showDropdown) {
-          try {
-            const res = await api.get('/notifications');
-            setNotifications(res.data);
-          } catch (err) { console.error(err); }
-      }
+    const fetchNotifications = async () => {
+      try {
+        const res = await api.get('/notifications');
+        const unreadOnly = res.data.filter(n => !n.isRead);
+        setNotifications(unreadOnly);
+      } catch (err) { console.error("Notif Error", err); }
     };
-    
-    fetchNotifs();
-    const interval = setInterval(fetchNotifs, 3000); 
+
+    fetchNotifications(); 
+    const interval = setInterval(fetchNotifications, 2000); 
     return () => clearInterval(interval);
-  }, [showDropdown]); // Depend on showDropdown
+  }, []);
 
   // 2. Click Outside
   useEffect(() => {
@@ -38,106 +37,123 @@ export default function Header({ user, onMenuClick }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  // 3. Toggle Logic
-  const handleToggle = () => {
-    const willOpen = !showDropdown;
-    setShowDropdown(willOpen);
+  // 3. Handle Click (Correct Logic) ✅
+  const handleNotificationClick = async (notif) => {
+    // A. Hide immediately
+    setNotifications(prev => prev.filter(n => n.id !== notif.id));
+    setShowDropdown(false);
 
-    if (willOpen && notifications.length > 0) {
-       // Mark as read in Backend ONLY
-       // We do NOT clear local state yet, so you can still see and click them
-       api.put('/notifications/read').catch(err => console.error(err));
-    } else {
-        // When closing, clear the list immediately locally
-        setNotifications([]);
-    }
-  };
-
-  const handleNotificationClick = (notif) => {
-    setShowDropdown(false); 
-    setNotifications([]); // Clear immediately upon click
-
-    if (notif.message.includes("New message from")) {
-        try {
-            const namePart = notif.message.split('from ')[1].split(':')[0].trim();
-            navigate('/messages', { state: { openChatWithName: namePart } });
-        } catch (e) {
-            navigate('/messages'); 
-        }
-    } else if (notif.message.includes("Appointment")) {
+    // B. Navigate using relatedId directly
+    if (notif.type === 'message' && notif.relatedId) {
+        // ✅ استخدام relatedId مباشرة
+        navigate('/messages', { 
+            state: { openChatWithId: notif.relatedId } 
+        });
+    } 
+    else if (notif.type === 'appointment') {
         navigate('/appointments');
     }
+
+    // C. Mark Read
+    try {
+        await api.put(`/notifications/${notif.id}/read`);
+    } catch (e) { console.error(e); }
+  };
+
+  // 4. Mark All Read
+  const handleMarkAllRead = async () => {
+      setNotifications([]);
+      setShowDropdown(false);
+      try { await api.put('/notifications/read'); } catch (e) {}
   };
 
   return (
-    <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-30 px-8 py-4 flex items-center justify-between">
+    <header className="bg-white sticky top-0 z-30 px-6 py-4 flex items-center justify-between border-b border-gray-100 shadow-sm h-20">
       
+      {/* Left */}
       <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="md:hidden text-slate-500 hover:text-primary">
+        <button onClick={onMenuClick} className="md:hidden text-gray-500 hover:text-primary transition-colors p-2 bg-gray-50 rounded-xl">
           <Menu size={24} />
         </button>
-        <div>
-          <h2 className="text-xl font-bold text-primary">
-            Welcome, {user.firstName || 'User'}
+        <div className="hidden md:block">
+          <h2 className="text-lg font-bold text-dark flex items-center gap-2">
+            مرحباً، <span className="text-primary">{firstName}</span> 👋
           </h2>
-          <p className="text-xs text-slate-400 hidden md:block">
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          <p className="text-xs text-gray-400 font-medium">
+            {new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        {/* Search */}
-        <div className="hidden md:flex items-center bg-surface-muted px-4 py-2.5 rounded-xl w-64 border border-transparent focus-within:border-accent/50 focus-within:bg-white transition-all">
-          <Search size={18} className="text-slate-400" />
-          <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none text-sm ml-2 w-full text-primary placeholder:text-slate-400" />
-        </div>
-
-        {/* Bell Icon */}
+      {/* Right */}
+      <div className="flex items-center gap-4">
         <div className="relative" ref={dropdownRef}>
           <button 
-            onClick={handleToggle}
-            className="relative p-2.5 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-accent transition-all"
+            onClick={() => setShowDropdown(!showDropdown)}
+            className={`relative w-10 h-10 rounded-full border flex items-center justify-center transition-all duration-300
+            ${showDropdown ? 'bg-primary text-white border-primary shadow-lg scale-110' : 'bg-white text-gray-500 border-gray-100 hover:bg-gray-50'}`}
           >
             <Bell size={20} />
             {notifications.length > 0 && (
-              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white animate-bounce">
+                {notifications.length}
+              </span>
             )}
           </button>
 
-          {/* Dropdown */}
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h3 className="font-bold text-primary text-sm">Notifications</h3>
-                <button onClick={() => setShowDropdown(false)}><X size={16} className="text-slate-400" /></button>
-              </div>
-              <div className="max-h-80 overflow-y-auto">
-                {notifications.length > 0 ? (
-                  notifications.map((notif) => (
-                    <div 
-                        key={notif.id} 
-                        onClick={() => handleNotificationClick(notif)}
-                        className="p-4 border-b border-slate-50 hover:bg-slate-50 transition-colors cursor-pointer bg-blue-50/30"
-                    >
-                      <p className="text-sm leading-snug text-primary font-semibold pointer-events-none">
-                        {notif.message}
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-2 font-medium pointer-events-none">
-                        {new Date(notif.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center text-slate-400 text-sm">No new notifications</div>
+            <div className="absolute end-0 mt-4 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 origin-top-right z-50">
+              <div className="p-4 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
+                <h3 className="font-bold text-dark text-sm">الإشعارات ({notifications.length})</h3>
+                {notifications.length > 0 && (
+                    <button onClick={handleMarkAllRead} className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                        <Check size={14}/> تحديد الكل كمقروء
+                    </button>
                 )}
+              </div>
+              
+              <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                 {notifications.length > 0 ? (
+                    notifications.map((notif) => (
+                        <div 
+                            key={notif.id} 
+                            onClick={() => handleNotificationClick(notif)}
+                            className="p-4 border-b border-gray-50 cursor-pointer transition-all hover:bg-blue-50/50 flex gap-3 items-start bg-white"
+                        >
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm border border-gray-100
+                                ${notif.type === 'message' ? 'bg-purple-50 text-purple-600' : 'bg-green-50 text-green-600'}`}>
+                                {notif.type === 'message' ? <MessageSquare size={18}/> : <Calendar size={18}/>}
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-bold text-dark leading-snug">
+                                    {notif.message}
+                                </p>
+                                <p className="text-[10px] text-gray-400 mt-1.5 flex justify-between items-center">
+                                    <span>{new Date(notif.created_at).toLocaleTimeString('ar-EG', {hour:'2-digit', minute:'2-digit'})}</span>
+                                    <span className="text-primary font-bold text-[9px] bg-primary/5 px-2 py-0.5 rounded-full">جديد</span>
+                                </p>
+                            </div>
+                        </div>
+                    ))
+                 ) : (
+                    <div className="p-12 text-center text-gray-400 flex flex-col items-center">
+                        <Bell size={24} className="opacity-30 mb-2"/>
+                        <p className="text-sm font-medium">لا توجد إشعارات جديدة</p>
+                    </div>
+                 )}
               </div>
             </div>
           )}
         </div>
 
-        <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center text-accent font-bold border-2 border-white shadow-sm cursor-pointer">
-          {user.firstName ? user.firstName[0] : 'U'}
+        <div className="flex items-center gap-3 ps-4 border-s border-gray-100 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => navigate('/settings')}>
+           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-primary font-bold border-2 border-white shadow-sm">
+             {firstName[0]}
+           </div>
+           <div className="hidden lg:block text-start">
+              <p className="text-xs font-bold text-dark">{firstName}</p>
+              <p className="text-[10px] text-gray-400 font-medium capitalize">{user?.role === 'patient' ? 'مريض' : user?.role === 'doctor' ? 'طبيب' : 'مسؤول'}</p>
+           </div>
         </div>
       </div>
     </header>

@@ -1,28 +1,47 @@
-// src/components/layout/Sidebar.jsx
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Stethoscope, Calendar, MessageSquare, LogOut, Settings, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { 
+  LayoutDashboard, Stethoscope, Calendar, MessageSquare, 
+  LogOut, Settings, X, FlaskConical, ShieldCheck, Languages
+} from 'lucide-react';
+import { twMerge } from 'tailwind-merge';
 
 export default function Sidebar({ role, isOpen, onClose }) {
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  
-  // Removed 'History' from this list
+  const isRTL = i18n.language === 'ar';
+
+  const toggleLanguage = () => {
+    const newLang = isRTL ? 'en' : 'ar';
+    i18n.changeLanguage(newLang);
+    document.dir = newLang === 'ar' ? 'rtl' : 'ltr';
+  };
+
+  // تعريف الروابط (نفس السابق)
   const patientLinks = [
-    { name: 'Dashboard', path: '/patient-dashboard', icon: LayoutDashboard },
-    { name: 'New Screening', path: '/screening', icon: Stethoscope },
-    { name: 'Messages', path: '/messages', icon: MessageSquare },
-    { name: 'Settings', path: '/settings', icon: Settings },
+    { name: 'الرئيسية', path: '/patient-dashboard', icon: LayoutDashboard },
+    { name: 'الفحص الذكي', path: '/screening', icon: Stethoscope },
+    { name: 'المعامل', path: '/labs', icon: FlaskConical },
+    { name: 'الرسائل', path: '/messages', icon: MessageSquare },
+    { name: 'الإعدادات', path: '/settings', icon: Settings },
   ];
 
   const doctorLinks = [
-    { name: 'Dashboard', path: '/doctor-dashboard', icon: LayoutDashboard },
-    { name: 'Appointments', path: '/appointments', icon: Calendar },
-    { name: 'Messages', path: '/messages', icon: MessageSquare },
-    { name: 'Settings', path: '/settings', icon: Settings }, 
+    { name: 'لوحة التحكم', path: '/doctor-dashboard', icon: LayoutDashboard },
+    { name: 'المواعيد', path: '/appointments', icon: Calendar },
+    { name: 'الرسائل', path: '/messages', icon: MessageSquare },
+    { name: 'الإعدادات', path: '/settings', icon: Settings },
   ];
 
-  const links = role === 'doctor' ? doctorLinks : patientLinks;
+  const adminLinks = [
+    { name: 'لوحة التحكم', path: '/admin-dashboard', icon: ShieldCheck },
+    { name: 'إدارة المعامل', path: '/labs', icon: FlaskConical },
+    { name: 'الإعدادات', path: '/settings', icon: Settings },
+  ];
+
+  const links = role === 'admin' ? adminLinks : (role === 'doctor' ? doctorLinks : patientLinks);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -31,51 +50,77 @@ export default function Sidebar({ role, isOpen, onClose }) {
   };
 
   return (
-    <aside className={`
-      fixed top-0 left-0 z-50 h-screen w-64 bg-primary text-white shadow-premium transition-transform duration-300 ease-in-out
-      ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
-      md:translate-x-0
-    `}>
-      <div className="p-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-            <Stethoscope size={20} className="text-white" />
+    <>
+      {/* Mobile Overlay (الخلفية المعتمة عند فتح القائمة في الموبايل) */}
+      <div 
+        className={`fixed inset-0 bg-dark/50 z-40 md:hidden backdrop-blur-sm transition-opacity duration-300
+        ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'}`}
+        onClick={onClose}
+      />
+
+      {/* Sidebar Container */}
+      <aside className={twMerge(`
+        fixed top-0 bottom-0 z-50 w-72 bg-white text-dark shadow-2xl md:shadow-none border-e border-gray-100 flex flex-col transition-transform duration-300 ease-in-out
+        ${isRTL ? 'right-0' : 'left-0'} 
+        ${isOpen ? 'translate-x-0' : (isRTL ? 'translate-x-full' : '-translate-x-full')} 
+        md:translate-x-0 
+      `)}>
+        
+        {/* Logo Section */}
+        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+              <Stethoscope size={24} />
+            </div>
+            <span className="text-xl font-bold text-primary tracking-tight">MedVision</span>
           </div>
-          <span className="text-xl font-bold tracking-tight">MedVision</span>
+          {/* زر الإغلاق يظهر فقط في الموبايل */}
+          <button onClick={onClose} className="md:hidden text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-gray-100">
+            <X size={24} />
+          </button>
         </div>
-        <button onClick={onClose} className="md:hidden text-slate-400 hover:text-white">
-          <X size={24} />
-        </button>
-      </div>
 
-      <nav className="flex-1 px-4 space-y-2 mt-4">
-        {links.map((link) => {
-          const isActive = location.pathname === link.path;
-          const Icon = link.icon;
-          return (
-            <Link
-              key={link.path}
-              to={link.path}
-              onClick={onClose}
-              className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-300 group
-              ${isActive ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
-            >
-              <Icon size={20} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-white'} />
-              <span className="font-medium">{link.name}</span>
-            </Link>
-          );
-        })}
-      </nav>
+        {/* Links */}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+          {links.map((link) => {
+            const isActive = location.pathname === link.path;
+            const Icon = link.icon;
+            return (
+              <Link
+                key={link.path}
+                to={link.path}
+                onClick={onClose} // إغلاق القائمة عند الضغط على رابط في الموبايل
+                className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group font-bold text-sm
+                ${isActive 
+                  ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                  : 'text-gray-500 hover:bg-gray-50 hover:text-primary'}`}
+              >
+                <Icon size={20} className={isActive ? 'text-white' : 'text-gray-400 group-hover:text-primary transition-colors'} />
+                <span>{link.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
-      <div className="p-4 border-t border-white/10">
-        <button 
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
-        >
-          <LogOut size={20} />
-          <span className="font-medium">Sign Out</span>
-        </button>
-      </div>
-    </aside>
+        {/* Bottom Actions */}
+        <div className="p-4 border-t border-gray-50 space-y-2 bg-gray-50/50">
+          <button 
+            onClick={toggleLanguage}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-dark hover:bg-white border border-transparent hover:border-gray-200 transition-all font-bold text-sm"
+          >
+            <Languages size={18} className="text-blue-500"/>
+            <span>{isRTL ? 'English' : 'العربية'}</span>
+          </button>
+
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl w-full text-red-500 hover:bg-red-50 transition-all font-bold text-sm"
+          >
+            <LogOut size={18} />
+            <span>تسجيل خروج</span>
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

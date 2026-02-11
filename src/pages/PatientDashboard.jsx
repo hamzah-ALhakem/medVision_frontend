@@ -1,23 +1,102 @@
-// src/pages/PatientDashboard.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Loader2, Clock, X, MessageCircle } from 'lucide-react';
+import { Calendar, Loader2, Clock, X, MessageCircle, MapPin, AlertCircle } from 'lucide-react';
 import api from '../services/api';
 import Button from '../components/ui/Button';
+import { useLanguage } from '../context/LanguageContext'; // 1. استيراد السياق
+
+// 2. قاموس الترجمة
+const translations = {
+  ar: {
+    hero: {
+      title: 'ابحث عن أفضل الأطباء 🩺',
+      desc: 'احجز موعدك الآن مع نخبة من الاستشاريين في مختلف التخصصات الطبية بكل سهولة.'
+    },
+    list: {
+      title: 'الأطباء المتاحون',
+      empty: 'لا يوجد أطباء متاحين حالياً.'
+    },
+    card: {
+      defaultSpecialty: 'تخصص عام',
+      noAddress: 'العنوان غير محدد',
+      shiftsTitle: 'المواعيد المتاحة',
+      noShifts: 'لا توجد مواعيد متاحة',
+      more: 'عرض المزيد +',
+      status: { confirmed: 'تم تأكيد الحجز ✅', pending: 'بانتظار الموافقة' },
+      btn: { chat: 'مراسلة الطبيب', book: 'حجز موعد', pending: 'قيد الانتظار' }
+    },
+    modal: {
+      title: 'حجز موعد جديد',
+      slotsLabel: 'المواعيد المتاحة',
+      noSlots: 'هذا الطبيب لم يحدد مواعيد عمل بعد.',
+      reasonLabel: 'سبب الزيارة',
+      reasonPlaceholder: 'اكتب باختصار سبب الحجز...',
+      btnConfirm: 'تأكيد الحجز',
+      btnSelectFirst: 'اختر موعداً أولاً',
+      alerts: {
+        selectSlot: 'يرجى اختيار موعد',
+        success: 'تم إرسال طلب الحجز بنجاح!',
+        error: 'فشل الحجز، حاول مرة أخرى'
+      }
+    }
+  },
+  en: {
+    hero: {
+      title: 'Find Best Doctors 🩺',
+      desc: 'Book your appointment now with elite consultants in various medical specialties easily.'
+    },
+    list: {
+      title: 'Available Doctors',
+      empty: 'No doctors available at the moment.'
+    },
+    card: {
+      defaultSpecialty: 'General Specialty',
+      noAddress: 'Address not specified',
+      shiftsTitle: 'Available Shifts',
+      noShifts: 'No shifts available',
+      more: 'Show more +',
+      status: { confirmed: 'Booking Confirmed ✅', pending: 'Pending Approval' },
+      btn: { chat: 'Message Doctor', book: 'Book Appointment', pending: 'Pending' }
+    },
+    modal: {
+      title: 'Book New Appointment',
+      slotsLabel: 'Available Slots',
+      noSlots: 'This doctor has not set working hours yet.',
+      reasonLabel: 'Visit Reason',
+      reasonPlaceholder: 'Briefly describe reason for visit...',
+      btnConfirm: 'Confirm Booking',
+      btnSelectFirst: 'Select a slot first',
+      alerts: {
+        selectSlot: 'Please select a slot',
+        success: 'Booking request sent successfully!',
+        error: 'Booking failed, please try again'
+      }
+    }
+  }
+};
+
+// خريطة أيام الأسبوع للترجمة
+const daysMap = {
+  'Saturday': 'السبت', 'Sunday': 'الأحد', 'Monday': 'الاثنين',
+  'Tuesday': 'الثلاثاء', 'Wednesday': 'الأربعاء', 'Thursday': 'الخميس', 'Friday': 'الجمعة'
+};
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
+  const { language } = useLanguage(); // 3. استخدام الهوك
+  const t = translations[language];
+
   const [doctors, setDoctors] = useState([]);
-  const [myAppointments, setMyAppointments] = useState([]); // Store my appointments and track their status
+  const [myAppointments, setMyAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // --- Booking Modal State ---
   const [selectedDoctor, setSelectedDoctor] = useState(null);
-  const [selectedSlot, setSelectedSlot] = useState(null); // Time slot selected by the patient
+  const [selectedSlot, setSelectedSlot] = useState(null);
   const [bookingReason, setBookingReason] = useState('');
   const [isBookingLoading, setIsBookingLoading] = useState(false);
 
-  // 1. Fetch data (doctors + my current appointments)
+  // 1. Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -36,7 +115,7 @@ export default function PatientDashboard() {
     fetchData();
   }, []);
 
-  // 2. Helper function to calculate the next date for the selected day
+  // 2. Date Calculation
   const getNextDateForDay = (dayName) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const targetIndex = days.indexOf(dayName);
@@ -44,48 +123,40 @@ export default function PatientDashboard() {
     const currentDayIndex = today.getDay();
 
     let daysUntilTarget = targetIndex - currentDayIndex;
-    if (daysUntilTarget <= 0) {
-      daysUntilTarget += 7; // If the day has passed, get next week's day
-    }
+    if (daysUntilTarget <= 0) daysUntilTarget += 7;
 
     const targetDate = new Date(today);
     targetDate.setDate(today.getDate() + daysUntilTarget);
-    return targetDate.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    return targetDate.toISOString().split('T')[0];
   };
 
-  // 3. Submit booking request
+  // 3. Submit Booking
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedSlot) return alert("Please select a time slot");
+    if (!selectedSlot) return alert(t.modal.alerts.selectSlot);
 
     setIsBookingLoading(true);
     try {
-      // Automatically calculate the date based on the selected day
       const calculatedDate = getNextDateForDay(selectedSlot.day_of_week);
-      
-      // ✅ FIX 1: Send ONLY the start time (e.g., "09:00:00")
-      // The database expects a TIME type, not a string like "09:00 - 17:00"
       const shiftTime = selectedSlot.start_time;
 
       await api.post('/appointments', {
         doctorId: selectedDoctor.id,
-        date: calculatedDate, // Calculated date
-        time: shiftTime,      // Fixed Time format
+        date: calculatedDate,
+        time: shiftTime,
         reason: bookingReason
       });
 
-      alert("Booking Request Sent Successfully!");
-
-      // Refresh appointments locally so the UI updates immediately
+      // Refresh locally
       const res = await api.get('/appointments');
       setMyAppointments(res.data);
 
-      setSelectedDoctor(null); // Close the modal
-      setBookingReason('');    // Reset reason field
-      setSelectedSlot(null);   // Reset slot selection
+      setSelectedDoctor(null);
+      setBookingReason('');
+      setSelectedSlot(null);
+      alert(t.modal.alerts.success);
     } catch (error) {
-      console.error(error);
-      alert("Failed to book.");
+      alert(t.modal.alerts.error);
     } finally {
       setIsBookingLoading(false);
     }
@@ -97,100 +168,127 @@ export default function PatientDashboard() {
       state: {
         startChatWith: {
           id: doctor.id,
-          name: `Dr. ${doctor.first_name} ${doctor.last_name}`,
+          name: `Dr. ${doctor.firstName} ${doctor.lastName}`,
           specialty: doctor.specialty
         }
       }
     });
   };
 
+  // Helpers
+  const getDocName = (doc) => language === 'ar' ? `د. ${doc.firstName || ''} ${doc.lastName || ''}` : `Dr. ${doc.firstName || ''} ${doc.lastName || ''}`;
+  const getDocInitials = (doc) => `${(doc.firstName || '')[0] || '?'}${(doc.lastName || '')[0] || ''}`;
+  
+  // دالة لعرض اليوم مترجم أو كما هو
+  const displayDay = (day) => language === 'ar' ? (daysMap[day] || day) : day;
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
 
       {/* Hero Section */}
-      <div className="relative bg-primary rounded-3xl p-8 md:p-12 text-white overflow-hidden shadow-premium">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="relative z-10 max-w-2xl">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Find your Doctor</h1>
-          <p className="text-slate-300 mb-8 text-lg">
-            Book an appointment during the available shifts and consult with our specialists.
-          </p>
+      <div className="relative bg-primary rounded-[2rem] p-8 md:p-10 text-white overflow-hidden shadow-lg shadow-blue-200">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
+        <div className="absolute bottom-0 right-0 w-64 h-64 bg-blue-400/20 rounded-full blur-2xl translate-y-1/3 translate-x-1/3 pointer-events-none"></div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div className="max-w-xl">
+                <h1 className="text-3xl md:text-4xl font-bold mb-3 leading-tight">{t.hero.title}</h1>
+                <p className="text-blue-100 text-lg opacity-90 leading-relaxed">
+                    {t.hero.desc}
+                </p>
+            </div>
         </div>
       </div>
 
       {/* Doctors List */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-bold text-primary">Available Specialists</h3>
+      <div>
+        <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-dark flex items-center gap-2">
+                {t.list.title} <span className="bg-blue-50 text-primary text-xs px-2 py-1 rounded-full">{doctors.length}</span>
+            </h3>
+        </div>
 
         {isLoading ? (
-          <div className="flex justify-center p-12"><Loader2 className="animate-spin text-accent" /></div>
+          <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
         ) : doctors.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {doctors.map((doc) => {
-              // ✅ FIX 2: Match appointment using Doctor ID (More reliable than name)
-              // Ensure your Backend 'getMyAppointments' returns 'doctor_id'
               const relevantAppt = myAppointments.find(a => a.doctor_id === doc.id);
               const status = relevantAppt ? relevantAppt.status : null;
               
               return (
-                <div key={doc.id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group flex flex-col h-full">
+                <div key={doc.id} className="bg-white p-5 rounded-[1.5rem] border border-gray-100 shadow-sm hover:shadow-card-hover transition-all group flex flex-col h-full relative overflow-hidden">
+                  
+                  {/* Status Strip */}
+                  {status === 'confirmed' && <div className="absolute top-0 left-0 right-0 h-1.5 bg-green-500"></div>}
+                  {status === 'pending' && <div className="absolute top-0 left-0 right-0 h-1.5 bg-orange-400"></div>}
 
                   <div className="flex items-start justify-between mb-4">
-                    <div className="w-14 h-14 rounded-full bg-surface-muted flex items-center justify-center text-xl font-bold text-primary border-2 border-white shadow-sm uppercase">
-                      {doc.first_name[0]}{doc.last_name[0]}
+                    <div className="flex gap-4">
+                        <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center text-xl font-bold text-primary border border-gray-100 shadow-inner">
+                            {getDocInitials(doc)}
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-dark text-lg group-hover:text-primary transition-colors">{getDocName(doc)}</h4>
+                            <p className="text-sm text-gray-500 font-medium mb-1">{doc.specialty || t.card.defaultSpecialty}</p>
+                            <div className="flex items-center gap-1 text-xs text-gray-400">
+                                <MapPin size={12} /> <span>{doc.clinicAddress || t.card.noAddress}</span>
+                            </div>
+                        </div>
                     </div>
-                    {/* Status Badge */}
-                    {status === 'confirmed' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-[10px] font-bold">APPROVED</span>}
-                    {status === 'pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold">WAITING APPROVAL</span>}
                   </div>
 
-                  <h4 className="font-bold text-primary text-lg">Dr. {doc.first_name} {doc.last_name}</h4>
-                  <p className="text-sm text-slate-500 mb-3">{doc.specialty || 'General'}</p>
-
-                  {/* Quick view of available shifts on the card */}
+                  {/* Shifts Preview */}
                   <div className="mb-6 mt-auto">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Available Shifts</p>
-                    <div className="flex flex-wrap gap-2">
-                      {doc.schedule?.filter(s => s.is_active).map((s, i) => (
-                        <span key={i} className="text-[10px] bg-slate-50 text-slate-600 px-2 py-1 rounded border border-slate-200">
-                          {s.day_of_week.substring(0, 3)}
-                        </span>
-                      ))}
+                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">{t.card.shiftsTitle}</p>
+                    <div className="flex flex-col gap-1.5">
+                      {doc.schedule && doc.schedule.filter(s => s.is_active).length > 0 ? (
+                          doc.schedule.filter(s => s.is_active).slice(0, 3).map((s, i) => (
+                            <div key={i} className="flex justify-between items-center text-[11px] bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg border border-gray-100 font-medium">
+                              <span>{displayDay(s.day_of_week)}</span>
+                              <span className="text-primary font-bold">{s.start_time.slice(0,5)} - {s.end_time.slice(0,5)}</span>
+                            </div>
+                          ))
+                      ) : (
+                          <div className="text-[10px] text-red-400 flex items-center gap-1 bg-red-50 px-2 py-1 rounded">
+                              <AlertCircle size={10}/> {t.card.noShifts}
+                          </div>
+                      )}
+                      {(doc.schedule?.filter(s => s.is_active).length || 0) > 3 && (
+                          <span className="text-[10px] text-center bg-gray-50 text-gray-400 px-2 py-1 rounded-lg border border-gray-100">{t.card.more}</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* --- Smart Buttons --- */}
-                  <div className="mt-4">
-                  {/* 1. If booking is confirmed -> show chat button */}
-                  {status === 'confirmed' ? (
-                    <button
-                      onClick={() => startChat(doc)}
-                      className="w-full py-3 rounded-xl bg-emerald-500 text-white font-semibold text-sm hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all flex items-center justify-center gap-2 animate-in zoom-in"
-                    >
-                      <MessageCircle size={18} /> Chat Now
-                    </button>
-                  )
-                    /* 2. If booking is pending -> waiting button */
-                    : status === 'pending' ? (
-                      <button
-                        disabled
-                        className="w-full py-3 rounded-xl bg-slate-100 text-slate-400 font-semibold text-sm cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        <Clock size={18} /> Request Pending
+                  {/* Action Buttons */}
+                  <div className="mt-2">
+                    {status === 'confirmed' ? (
+                      <div className="space-y-2">
+                          <div className="bg-green-50 text-green-700 text-xs font-bold py-2 rounded-xl text-center border border-green-100">
+                              {t.card.status.confirmed}
+                          </div>
+                          <button
+                            onClick={() => startChat(doc)}
+                            className="w-full py-3 rounded-xl bg-white border-2 border-primary text-primary font-bold text-sm hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2"
+                          >
+                            <MessageCircle size={18} /> {t.card.btn.chat}
+                          </button>
+                      </div>
+                    ) : status === 'pending' ? (
+                      <button disabled className="w-full py-3 rounded-xl bg-orange-50 text-orange-600 font-bold text-sm border border-orange-100 flex items-center justify-center gap-2 cursor-default">
+                        <Clock size={18} /> {t.card.btn.pending}
                       </button>
-                    )
-                      /* 3. No booking -> book appointment button */
-                      : (
-                        <button
-                          onClick={() => {
-                            setSelectedDoctor(doc);
-                            setSelectedSlot(null);
-                          }}
-                          className="w-full py-3 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary-light shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
-                        >
-                          <Calendar size={18} /> Book Appointment
-                        </button>
-                      )}
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setSelectedDoctor(doc);
+                          setSelectedSlot(null);
+                        }}
+                        className="w-full py-3.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-hover shadow-lg shadow-primary/20 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                      >
+                        <Calendar size={18} /> {t.card.btn.book}
+                      </button>
+                    )}
                   </div>
 
                 </div>
@@ -198,76 +296,85 @@ export default function PatientDashboard() {
             })}
           </div>
         ) : (
-          <div className="p-8 text-center text-slate-400">No doctors available.</div>
+          <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-gray-200">
+            <p className="text-gray-400 font-medium">{t.list.empty}</p>
+          </div>
         )}
       </div>
 
       {/* --- Booking Modal --- */}
       {selectedDoctor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-primary/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
-
-            <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-dark/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300 relative">
+            
+            {/* Modal Header */}
+            <div className="px-8 py-6 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center">
               <div>
-                <h2 className="text-xl font-bold text-primary">Select a Shift</h2>
-                <p className="text-sm text-slate-500">Dr. {selectedDoctor.first_name} {selectedDoctor.last_name}</p>
+                <h2 className="text-xl font-bold text-dark">{t.modal.title}</h2>
+                <p className="text-sm text-gray-500 font-medium mt-0.5">{getDocName(selectedDoctor)}</p>
               </div>
-              <button onClick={() => setSelectedDoctor(null)}><X size={20} className="text-slate-400" /></button>
+              <button 
+                onClick={() => setSelectedDoctor(null)}
+                className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 transition-colors"
+              >
+                <X size={18} />
+              </button>
             </div>
 
             <form onSubmit={handleBookingSubmit} className="p-8 space-y-6">
-
-              {/* 1. Show only available doctor shifts for selection */}
+              
+              {/* Slot Selection */}
               <div className="space-y-3">
-                <label className="text-sm font-bold text-primary ml-1">Available Shifts (Click to select)</label>
-                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                <label className="text-sm font-bold text-dark block">{t.modal.slotsLabel}</label>
+                <div className="grid grid-cols-1 gap-2.5 max-h-60 overflow-y-auto custom-scrollbar pr-1">
                   {selectedDoctor.schedule?.filter(s => s.is_active).length > 0 ? (
                     selectedDoctor.schedule.filter(s => s.is_active).map((s, idx) => (
                       <div
                         key={idx}
                         onClick={() => setSelectedSlot(s)}
-                        className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-center
-                                    ${selectedSlot === s
-                            ? 'border-accent bg-accent/10 ring-1 ring-accent'
-                            : 'border-slate-200 hover:border-accent/50 hover:bg-slate-50'}`}
+                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center group
+                        ${selectedSlot === s
+                          ? 'border-primary bg-primary/5'
+                          : 'border-gray-100 hover:border-primary/30 hover:bg-gray-50'}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedSlot === s ? 'border-accent' : 'border-slate-300'}`}>
-                            {selectedSlot === s && <div className="w-2 h-2 rounded-full bg-accent"></div>}
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                            ${selectedSlot === s ? 'border-primary' : 'border-gray-300 group-hover:border-primary/50'}`}>
+                            {selectedSlot === s && <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>}
                           </div>
-                          <span className="font-bold text-primary">{s.day_of_week}</span>
+                          <span className={`font-bold text-sm ${selectedSlot === s ? 'text-primary' : 'text-gray-600'}`}>{displayDay(s.day_of_week)}</span>
                         </div>
-                        <span className="text-sm text-slate-500 font-mono bg-white px-2 py-1 rounded border border-slate-100">
+                        <span className="text-xs font-bold text-gray-500 bg-white px-2 py-1 rounded border border-gray-100">
                           {s.start_time.slice(0, 5)} - {s.end_time.slice(0, 5)}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center text-red-400 py-4 border border-dashed rounded-xl">
-                      Doctor has not set any working hours yet.
+                    <div className="text-center text-red-400 py-6 border-2 border-dashed border-red-50 rounded-xl bg-red-50/10 text-sm font-medium">
+                      {t.modal.noSlots}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 2. Reason for visit */}
+              {/* Reason */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-primary ml-1">Reason for Visit</label>
+                <label className="text-sm font-bold text-dark block">{t.modal.reasonLabel}</label>
                 <textarea
-                  placeholder="e.g., Follow up, High fever..."
+                  placeholder={t.modal.reasonPlaceholder}
                   rows="2"
-                  className="w-full p-4 bg-surface-muted rounded-xl border-transparent focus:bg-white focus:ring-2 focus:ring-accent outline-none transition-all text-sm resize-none"
+                  className="w-full p-4 bg-gray-50 rounded-xl border-2 border-transparent focus:bg-white focus:border-primary outline-none transition-all text-sm resize-none font-medium placeholder:text-gray-400"
                   value={bookingReason}
                   onChange={(e) => setBookingReason(e.target.value)}
                   required
                 ></textarea>
               </div>
 
-              {/* 3. Confirm button */}
-              <Button type="submit" isLoading={isBookingLoading} disabled={!selectedSlot} className="w-full py-4 text-base shadow-xl shadow-accent/20">
+              {/* Submit */}
+              <Button type="submit" isLoading={isBookingLoading} disabled={!selectedSlot} className="w-full py-4 text-base shadow-xl shadow-primary/20">
                 {selectedSlot
-                  ? `Confirm Booking for Next ${selectedSlot.day_of_week}`
-                  : 'Select a Slot First'}
+                  ? `${t.modal.btnConfirm} (${displayDay(selectedSlot.day_of_week)})`
+                  : t.modal.btnSelectFirst}
               </Button>
             </form>
           </div>

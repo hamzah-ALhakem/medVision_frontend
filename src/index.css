@@ -4,23 +4,21 @@
 
 @layer base {
   body {
-    @apply bg-surface-muted text-primary-dark antialiased;
-    /* Improves font rendering */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    @apply bg-grey-50 text-dark;
   }
 }
 
-/* Custom Premium Scrollbar */
+/* تحسين شكل شريط التمرير (Scrollbar) */
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #f1f1f1;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300 rounded-full;
+  background: #c1c1c1;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-400;
+  background: #a8a8a8;
 }

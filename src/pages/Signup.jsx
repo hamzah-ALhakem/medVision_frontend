@@ -1,429 +1,399 @@
-// src/pages/Signup.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Stethoscope, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, Mail, Phone, Lock, Calendar, Globe, MapPin } from 'lucide-react';
+import { 
+  User, Stethoscope, ArrowRight, ArrowLeft, CheckCircle2, 
+  AlertCircle, Mail, Lock, MapPin, Clock, Globe 
+} from 'lucide-react';
 import api from '../services/api';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
+import logo from '../assets/logo.png';
+import { useLanguage } from '../context/LanguageContext';
 
-// --- EXPANDED COUNTRY LIST ---
-const countryOptions = [
-  { code: 'YE', name: 'Yemen', dial: '+967', length: 9 },
-  { code: 'EG', name: 'Egypt', dial: '+20', length: 10 },
-  { code: 'SA', name: 'Saudi Arabia', dial: '+966', length: 9 },
-  { code: 'AE', name: 'United Arab Emirates', dial: '+971', length: 9 },
-  { code: 'US', name: 'United States', dial: '+1', length: 10 },
-  { code: 'GB', name: 'United Kingdom', dial: '+44', length: 10 },
-  { code: 'JO', name: 'Jordan', dial: '+962', length: 9 },
-  { code: 'KW', name: 'Kuwait', dial: '+965', length: 8 },
-  { code: 'QA', name: 'Qatar', dial: '+974', length: 8 },
-  { code: 'BH', name: 'Bahrain', dial: '+973', length: 8 },
-  { code: 'OM', name: 'Oman', dial: '+968', length: 8 },
-  { code: 'LB', name: 'Lebanon', dial: '+961', length: 8 },
-  { code: 'IQ', name: 'Iraq', dial: '+964', length: 10 },
-  { code: 'SD', name: 'Sudan', dial: '+249', length: 9 },
-  { code: 'LY', name: 'Libya', dial: '+218', length: 9 },
-  { code: 'MA', name: 'Morocco', dial: '+212', length: 9 },
-  { code: 'TN', name: 'Tunisia', dial: '+216', length: 8 },
-  { code: 'DZ', name: 'Algeria', dial: '+213', length: 9 },
-];
+const translations = {
+  ar: {
+    header: 'إنشاء حساب جديد 🚀',
+    steps: { 1: 'خطوة 1: اختر نوع الحساب', 2: 'خطوة 2: البيانات الشخصية', 3: 'خطوة 3: مواعيد العيادة' },
+    roles: { patient: 'مريض', patientDesc: 'احجز مواعيد وافحص صحتك', doctor: 'طبيب', doctorDesc: 'أدر مرضاك ومواعيدك' },
+    labels: {
+      fullName: 'الاسم الكامل', fullNamePH: 'مثال: أحمد محمد',
+      email: 'البريد الإلكتروني', emailPH: 'name@example.com',
+      phone: 'رقم الهاتف', phonePH: '10xxxxxxxx', phoneHint: 'أدخل الرقم بدون الصفر الأول (مثال: 1012345678)',
+      gender: 'النوع', male: 'ذكر', female: 'أنثى',
+      pass: 'كلمة المرور', confirmPass: 'تأكيد كلمة المرور',
+      specialty: 'التخصص الطبي', specialtyPH: 'مثال: باطنة',
+      license: 'رقم الترخيص', licensePH: 'MD-12345',
+      clinic: 'عنوان العيادة / المستشفى', clinicPH: 'القاهرة، التجمع الخامس...',
+      docSection: 'التحقق المهني'
+    },
+    schedule: {
+      title: 'حدد مواعيد عمل العيادة',
+      desc: 'اضغط على المربع بجانب اليوم لتفعيله، ثم حدد الوقت.'
+    },
+    buttons: {
+      back: 'رجوع', next: 'التالي: المواعيد', create: 'إنشاء الحساب', finish: 'إتمام التسجيل',
+      returnLogin: 'العودة لصفحة الدخول'
+    },
+    success: {
+      title: 'تم استلام طلبك بنجاح! 🎉',
+      desc: 'شكراً لانضمامك د. {name}. بياناتك ومواعيد العيادة قيد المراجعة. سيتم تفعيل حسابك قريباً.'
+    },
+    footer: { text: 'لديك حساب بالفعل؟', link: 'تسجيل الدخول' },
+    errors: {
+      fullName: 'يرجى كتابة الاسم الثنائي على الأقل',
+      email: 'بريد إلكتروني غير صحيح',
+      phoneReq: 'رقم الهاتف مطلوب',
+      phoneInv: 'رقم غير صحيح (10 أرقام تبدأ بـ 10, 11, 12, 15)',
+      passLen: 'كلمة المرور يجب أن تكون 6 أحرف على الأقل',
+      passMatch: 'كلمات المرور غير متطابقة',
+      specialty: 'التخصص مطلوب',
+      license: 'رقم الترخيص مطلوب',
+      clinic: 'العنوان مطلوب',
+      schedule: '⚠️ يجب تحديد يوم عمل واحد على الأقل للعيادة.',
+      global: 'فشل إنشاء الحساب، يرجى المحاولة مرة أخرى'
+    }
+  },
+  en: {
+    header: 'Create New Account 🚀',
+    steps: { 1: 'Step 1: Choose Role', 2: 'Step 2: Personal Info', 3: 'Step 3: Work Schedule' },
+    roles: { patient: 'Patient', patientDesc: 'Book appointments & Check health', doctor: 'Doctor', doctorDesc: 'Manage patients & Appointments' },
+    labels: {
+      fullName: 'Full Name', fullNamePH: 'Ex: John Doe',
+      email: 'Email Address', emailPH: 'name@example.com',
+      phone: 'Phone Number', phonePH: '10xxxxxxxx', phoneHint: 'Enter 10 digits without leading zero',
+      gender: 'Gender', male: 'Male', female: 'Female',
+      pass: 'Password', confirmPass: 'Confirm Password',
+      specialty: 'Medical Specialty', specialtyPH: 'Ex: Internal Medicine',
+      license: 'License Number', licensePH: 'MD-12345',
+      clinic: 'Clinic / Hospital Address', clinicPH: 'Cairo, 5th Settlement...',
+      docSection: 'Professional Verification'
+    },
+    schedule: {
+      title: 'Set Clinic Schedule',
+      desc: 'Check the box to activate the day, then set hours.'
+    },
+    buttons: {
+      back: 'Back', next: 'Next: Schedule', create: 'Create Account', finish: 'Finish Registration',
+      returnLogin: 'Return to Login'
+    },
+    success: {
+      title: 'Request Received Successfully! 🎉',
+      desc: 'Thank you for joining Dr. {name}. Your data and schedule are under review. Your account will be activated soon.'
+    },
+    footer: { text: 'Already have an account?', link: 'Sign In' },
+    errors: {
+      fullName: 'Please enter at least two names',
+      email: 'Invalid email address',
+      phoneReq: 'Phone number required',
+      phoneInv: 'Invalid number (10 digits starting with 10, 11, 12, 15)',
+      passLen: 'Password must be at least 6 characters',
+      passMatch: 'Passwords do not match',
+      specialty: 'Specialty required',
+      license: 'License number required',
+      clinic: 'Address required',
+      schedule: '⚠️ You must select at least one working day.',
+      global: 'Account creation failed, please try again'
+    }
+  }
+};
+
+const daysMap = {
+  ar: { 'Saturday': 'السبت', 'Sunday': 'الأحد', 'Monday': 'الاثنين', 'Tuesday': 'الثلاثاء', 'Wednesday': 'الأربعاء', 'Thursday': 'الخميس', 'Friday': 'الجمعة' },
+  en: { 'Saturday': 'Saturday', 'Sunday': 'Sunday', 'Monday': 'Monday', 'Tuesday': 'Tuesday', 'Wednesday': 'Wednesday', 'Thursday': 'Thursday', 'Friday': 'Friday' }
+};
 
 export default function Signup() {
   const navigate = useNavigate();
+  const { language, toggleLanguage } = useLanguage();
+  const t = translations[language];
+
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({}); 
+  const [errors, setErrors] = useState({});
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
-    role: '', 
-    fullName: '',
-    email: '',
-    countryCode: '+967', // Default
-    phone: '',
-    gender: '', 
-    password: '',
-    confirmPassword: '',
-    dateOfBirth: '', // Will store as DD/MM/YYYY
-    clinicAddress: '',
-    licenseNumber: '',
-    specialty: '',
+    role: '', fullName: '', email: '', phone: '', gender: 'Male',
+    password: '', confirmPassword: '', clinicAddress: '', licenseNumber: '', specialty: '',
   });
 
-  const currentCountry = countryOptions.find(c => c.dial === formData.countryCode) || countryOptions[0];
+  const daysOfWeek = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const [schedule, setSchedule] = useState(
+    daysOfWeek.map(day => ({ day, startTime: '09:00', endTime: '17:00', isActive: false }))
+  );
 
-  // --- SMART DATE FORMATTER (DD/MM/YYYY) ---
-  const handleDateChange = (e) => {
-    let value = e.target.value.replace(/\D/g, ''); // Remove non-numbers
-    
-    // Auto-add slashes
-    if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2);
-    if (value.length >= 5) value = value.slice(0, 5) + '/' + value.slice(5, 10);
-    
-    // Limit length
-    value = value.slice(0, 10);
-
-    setFormData({ ...formData, dateOfBirth: value });
-    
-    // Real-time validation
-    if (value.length === 10) {
-      const [day, month, year] = value.split('/').map(Number);
-      const date = new Date(year, month - 1, day);
-      const now = new Date();
-      
-      if (
-        date.getDate() !== day || 
-        date.getMonth() + 1 !== month || 
-        date.getFullYear() !== year
-      ) {
-        setErrors(prev => ({ ...prev, dateOfBirth: "Invalid date." }));
-      } else if (year < 1900 || year > now.getFullYear()) {
-        setErrors(prev => ({ ...prev, dateOfBirth: "Invalid year." }));
-      } else if (now.getFullYear() - year < 18) {
-        setErrors(prev => ({ ...prev, dateOfBirth: "You must be 18+." }));
-      } else {
-        setErrors(prev => ({ ...prev, dateOfBirth: "" }));
-      }
-    }
-  };
-
-  // --- VALIDATION ---
-  const validateField = (name, value) => {
-    switch (name) {
-      case 'fullName':
-        if (!value.trim()) return "Full Name is required.";
-        if (value.trim().length < 3) return "Name must be 3+ chars.";
-        return "";
-      
-      case 'email':
-        if (!value.trim() || !/\S+@\S+\.\S+/.test(value)) return "Valid Email is required.";
-        return "";
-
-      case 'phone':
-        if (!value.trim()) return "Required.";
-        // Check exact length based on country
-        if (value.length !== currentCountry.length) {
-          return `Must be ${currentCountry.length} digits for ${currentCountry.name}.`;
-        }
-        return "";
-
-      case 'password':
-        if (value.length < 8) return "Min 8 chars, 1 Uppercase, 1 Number.";
-        if (!/[A-Z]/.test(value) || !/[0-9]/.test(value)) return "Need Uppercase & Number.";
-        return "";
-
-      case 'confirmPassword':
-        if (value !== formData.password) return "Passwords do not match.";
-        return "";
-
-      // Doctor Specific
-      case 'licenseNumber':
-      case 'clinicAddress':
-      case 'specialty':
-        return formData.role === 'doctor' && !value.trim() ? "This field is required." : "";
-
-      default: return "";
-    }
-  };
-
+  // --- Handlers ---
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // For phone: only allow numbers
     if (name === 'phone' && !/^\d*$/.test(value)) return;
-
     setFormData({ ...formData, [name]: value });
+    if (errors[name]) setErrors({ ...errors, [name]: '' });
+  };
+
+  const toggleDay = (index) => {
+    const newSchedule = [...schedule];
+    newSchedule[index].isActive = !newSchedule[index].isActive;
+    setSchedule(newSchedule);
+    if (errors.global) setErrors({ ...errors, global: '' });
+  };
+
+  const updateTime = (index, field, value) => {
+    const newSchedule = [...schedule];
+    newSchedule[index][field] = value;
+    setSchedule(newSchedule);
+  };
+
+  const validateStep2 = () => {
+    const newErrors = {};
+    if (!formData.fullName.trim().includes(' ')) newErrors.fullName = t.errors.fullName;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) newErrors.email = t.errors.email;
+    const egyptPhoneRegex = /^1[0-2,5]{1}[0-9]{8}$/;
+    if (!formData.phone) newErrors.phone = t.errors.phoneReq;
+    else if (!egyptPhoneRegex.test(formData.phone)) newErrors.phone = t.errors.phoneInv;
+    if (formData.password.length < 6) newErrors.password = t.errors.passLen;
+    if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = t.errors.passMatch;
     
-    const errorMsg = validateField(name, value);
-    setErrors(prev => ({ ...prev, [name]: errorMsg }));
+    if (formData.role === 'doctor') {
+      if (!formData.specialty) newErrors.specialty = t.errors.specialty;
+      if (!formData.licenseNumber) newErrors.licenseNumber = t.errors.license;
+      if (!formData.clinicAddress) newErrors.clinicAddress = t.errors.clinic;
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep3 = () => {
+      const activeDays = schedule.filter(s => s.isActive);
+      if (activeDays.length === 0) {
+          setErrors({ global: t.errors.schedule });
+          return false;
+      }
+      return true;
+  };
+
+  const handleNext = (e) => {
+    e.preventDefault();
+    if (step === 2) {
+        if (!validateStep2()) return;
+        if (formData.role === 'doctor') setStep(3);
+        else handleSubmit();
+    }
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Validate Date manually before submit
-    if (formData.role === 'patient' && formData.dateOfBirth.length !== 10) {
-      setErrors(prev => ({ ...prev, dateOfBirth: "Full date required (DD/MM/YYYY)." }));
-      return;
-    }
-
-    // Check all other fields
-    const newErrors = {};
-    Object.keys(formData).forEach(key => {
-      const msg = validateField(key, formData[key]);
-      if (msg) newErrors[key] = msg;
-    });
-    
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+    if (e) e.preventDefault();
+    if (formData.role === 'doctor' && !validateStep3()) return;
 
     setIsLoading(true);
     try {
-      // Backend expects "YYYY-MM-DD" often, so let's convert it if needed
-      // OR send as string if backend handles it. Assuming we send string for now.
       const submissionData = {
         ...formData,
-        phone: `${formData.countryCode}${formData.phone}`
+        phone: `+20${formData.phone}`,
+        schedule: formData.role === 'doctor' ? schedule.filter(s => s.isActive) : []
       };
       
       await api.post('/auth/register', submissionData);
-      navigate('/login');
+      
+      if (formData.role === 'doctor') setIsSuccess(true);
+      else navigate('/login');
+
     } catch (err) {
-      setErrors(prev => ({ ...prev, global: err.response?.data?.message || 'Registration failed.' }));
+      setErrors({ global: t.errors.global });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // --- COMPONENTS ---
   const RoleCard = ({ role, icon: Icon, title, desc }) => (
     <div 
       onClick={() => { setFormData({ ...formData, role }); setStep(2); setErrors({}); }}
-      className={`cursor-pointer p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-4 group
-      ${formData.role === role 
-        ? 'border-accent bg-accent/5 ring-4 ring-accent/10' 
-        : 'border-slate-100 bg-white hover:border-accent/50 hover:shadow-lg'}`}
+      className={`cursor-pointer p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-4 group hover:shadow-lg
+      ${formData.role === role ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-gray-100 bg-white hover:border-primary/30'}`}
     >
-      <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors
-        ${formData.role === role ? 'bg-accent text-white' : 'bg-surface-muted text-primary group-hover:bg-accent/10 group-hover:text-accent'}`}>
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-colors text-3xl ${formData.role === role ? 'bg-primary text-white' : 'bg-gray-100 text-gray-400 group-hover:bg-primary/10 group-hover:text-primary'}`}>
         <Icon size={32} />
       </div>
       <div>
-        <h3 className="text-lg font-bold text-primary">{title}</h3>
-        <p className="text-sm text-primary/60 mt-1">{desc}</p>
+        <h3 className="text-lg font-bold text-dark group-hover:text-primary transition-colors">{title}</h3>
+        <p className="text-sm text-gray-400 mt-1">{desc}</p>
       </div>
     </div>
   );
 
+  const ArrowIcon = language === 'ar' ? ArrowLeft : ArrowRight;
+  const BackIcon = language === 'ar' ? ArrowRight : ArrowLeft;
+
   return (
-    <div className="min-h-screen bg-surface-muted flex flex-col justify-center items-center p-6">
-      <div className="w-full max-w-2xl bg-white rounded-3xl shadow-premium p-8 md:p-12">
+    <div className="min-h-screen grid lg:grid-cols-2 bg-white" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+      
+      <div className="flex flex-col justify-center items-center p-6 sm:p-12 overflow-y-auto relative">
         
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">Create Account</h1>
-          <p className="text-primary/60">Step {step} of 2 • {step === 1 ? 'Select Role' : 'Your Details'}</p>
-          <div className="w-full h-1 bg-surface-muted mt-6 rounded-full overflow-hidden">
-            <div className="h-full bg-accent transition-all duration-500" style={{ width: step === 1 ? '50%' : '100%' }} />
-          </div>
-        </div>
+        {/* Lang Switcher */}
+        <button onClick={toggleLanguage} className="absolute top-6 right-6 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
+            <Globe size={20} />
+            <span className="text-sm font-bold">{language === 'ar' ? 'English' : 'عربي'}</span>
+        </button>
 
-        {errors.global && (
-          <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium flex items-center gap-2">
-            <AlertCircle size={18} /> {errors.global}
-          </div>
-        )}
+        <div className="w-full max-w-lg space-y-8">
+          
+          {isSuccess ? (
+              <div className="text-center animate-in zoom-in duration-300">
+                  <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle2 size={48} className="text-green-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-dark mb-3">{t.success.title}</h2>
+                  <p className="text-gray-500 mb-8 leading-relaxed">
+                      {t.success.desc.replace('{name}', formData.fullName)}
+                  </p>
+                  <Button onClick={() => navigate('/login')} className="w-full">
+                      {t.buttons.returnLogin}
+                  </Button>
+              </div>
+          ) : (
+            <>
+              <div className="text-center">
+                <img src={logo} alt="MedVision" className="w-16 h-16 mx-auto mb-4 object-contain" />
+                <h1 className="text-3xl font-bold text-dark mb-2">{t.header}</h1>
+                <p className="text-gray-500">
+                  {step === 1 && t.steps[1]}
+                  {step === 2 && t.steps[2]}
+                  {step === 3 && t.steps[3]}
+                </p>
+                <div className="w-full h-1.5 bg-gray-100 mt-6 rounded-full overflow-hidden" dir="ltr">
+                  <div className="h-full bg-primary transition-all duration-500 ease-out" 
+                       style={{ width: step === 1 ? '33%' : step === 2 ? '66%' : '100%' }} />
+                </div>
+              </div>
 
-        {step === 1 && (
-          <div className="grid md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4">
-            <RoleCard role="patient" icon={User} title="Patient" desc="Screening & Health History" />
-            <RoleCard role="doctor" icon={Stethoscope} title="Doctor" desc="Manage Patients & Appointments" />
-          </div>
-        )}
+              {errors.global && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm font-bold animate-in fade-in">
+                  <AlertCircle size={20} /> {errors.global}
+                </div>
+              )}
 
-        {step === 2 && (
-          <form onSubmit={handleSubmit} className="space-y-5 animate-in fade-in slide-in-from-right-4">
-            
-            {/* Full Name */}
-            <Input 
-              label="Full Name" 
-              name="fullName"
-              placeholder="John Doe" 
-              value={formData.fullName} 
-              onChange={handleChange}
-              error={errors.fullName}
-              icon={User}
-            />
-            
-            <div className="grid md:grid-cols-2 gap-4">
-              <Input 
-                label="Email Address" 
-                name="email"
-                type="email"
-                placeholder="name@email.com" 
-                value={formData.email} 
-                onChange={handleChange}
-                error={errors.email}
-                icon={Mail}
-              />
+              {step === 1 && (
+                <div className="grid md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4">
+                  <RoleCard role="patient" icon={User} title={t.roles.patient} desc={t.roles.patientDesc} />
+                  <RoleCard role="doctor" icon={Stethoscope} title={t.roles.doctor} desc={t.roles.doctorDesc} />
+                </div>
+              )}
 
-              {/* --- COUNTRY & PHONE --- */}
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-primary/80 ml-1">Phone Number</label>
-                <div className="flex gap-2">
-                  {/* Country Dropdown */}
-                  <div className="relative w-2/5">
-                    <select
-                      name="countryCode"
-                      value={formData.countryCode}
-                      onChange={(e) => {
-                        setFormData({...formData, countryCode: e.target.value, phone: ''});
-                        setErrors({...errors, phone: ''});
-                      }}
-                      className="w-full h-full bg-surface-muted border-2 border-transparent rounded-xl py-3 pl-2 pr-1 outline-none font-medium text-primary text-sm appearance-none cursor-pointer hover:bg-slate-200 transition-colors truncate"
-                    >
-                      {countryOptions.map(c => (
-                        <option key={c.code} value={c.dial}>
-                          {c.name} ({c.dial})
-                        </option>
+              {step === 2 && (
+                <form onSubmit={handleNext} className="space-y-5 animate-in fade-in slide-in-from-right-4">
+                  <Input label={t.labels.fullName} name="fullName" placeholder={t.labels.fullNamePH} value={formData.fullName} onChange={handleChange} error={errors.fullName} icon={User} />
+                  <Input label={t.labels.email} name="email" type="email" placeholder={t.labels.emailPH} value={formData.email} onChange={handleChange} error={errors.email} icon={Mail} />
+                  
+                  <div className="space-y-1.5">
+                    <label className="block text-sm font-bold text-gray-700 mx-1">{t.labels.phone}</label>
+                    <div className="flex gap-2" dir="ltr">
+                      <div className="w-[80px] bg-gray-50 border-2 border-gray-100 rounded-xl flex items-center justify-center font-bold text-dark text-sm select-none">🇪🇬 +20</div>
+                      <input name="phone" type="tel" placeholder={t.labels.phonePH} value={formData.phone} onChange={handleChange} maxLength={10} className={`flex-1 bg-white border-2 rounded-xl py-3 px-4 outline-none transition-all font-medium text-dark placeholder:text-gray-300 ${errors.phone ? 'border-red-300 bg-red-50/10' : 'border-gray-100 focus:border-primary'}`} />
+                    </div>
+                    {errors.phone && <p className="text-xs font-bold text-red-500 mx-1 text-right">{errors.phone}</p>}
+                    <p className="text-[10px] text-gray-400 mx-1 text-right">{t.labels.phoneHint}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2 mx-1">{t.labels.gender}</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      {['Male', 'Female'].map((g) => (
+                        <button key={g} type="button" onClick={() => setFormData({ ...formData, gender: g })} className={`py-3 rounded-xl border-2 font-bold transition-all flex items-center justify-center gap-2 text-sm ${formData.gender === g ? 'border-primary bg-primary/5 text-primary' : 'border-gray-100 text-gray-400 hover:border-gray-200'}`}>
+                          {g === 'Male' ? t.labels.male : t.labels.female}
+                        </button>
                       ))}
-                    </select>
-                    {/* Small arrow icon overlay */}
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500 bg-surface-muted pl-1">
-                      <Globe size={14} />
                     </div>
                   </div>
 
-                  {/* Phone Input */}
-                  <div className="relative w-3/5">
-                    <input
-                      name="phone"
-                      type="tel"
-                      placeholder={`e.g. ${currentCountry.dial.replace('+','')}...`}
-                      value={formData.phone}
-                      onChange={handleChange}
-                      maxLength={currentCountry.length}
-                      className={`w-full bg-surface-muted border-2 rounded-xl py-3 px-4 outline-none transition-all duration-300 font-medium text-primary placeholder:text-primary/30
-                      ${errors.phone 
-                        ? 'border-red-300 bg-red-50/50 focus:border-red-500' 
-                        : 'border-transparent focus:border-accent focus:bg-white'}`}
-                    />
+                  {formData.role === 'doctor' && (
+                    <div className="p-5 bg-gray-50/50 rounded-2xl border border-gray-100 space-y-4 animate-in fade-in">
+                      <h4 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2"><CheckCircle2 size={16} /> {t.labels.docSection}</h4>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <Input label={t.labels.specialty} name="specialty" placeholder={t.labels.specialtyPH} value={formData.specialty} onChange={handleChange} error={errors.specialty} icon={Stethoscope} />
+                        <Input label={t.labels.license} name="licenseNumber" placeholder={t.labels.licensePH} value={formData.licenseNumber} onChange={handleChange} error={errors.licenseNumber} icon={CheckCircle2} />
+                      </div>
+                      <Input label={t.labels.clinic} name="clinicAddress" placeholder={t.labels.clinicPH} value={formData.clinicAddress} onChange={handleChange} error={errors.clinicAddress} icon={MapPin} />
+                    </div>
+                  )}
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Input label={t.labels.pass} name="password" type="password" value={formData.password} onChange={handleChange} error={errors.password} icon={Lock} />
+                    <Input label={t.labels.confirmPass} name="confirmPassword" type="password" value={formData.confirmPassword} onChange={handleChange} error={errors.confirmPassword} icon={Lock} />
                   </div>
-                </div>
-                {errors.phone && <p className="text-xs font-medium text-red-500 ml-1">{errors.phone}</p>}
-              </div>
-            </div>
 
-            {/* --- CUSTOM DATE INPUT (DD/MM/YYYY) --- */}
-            {formData.role === 'patient' && (
-              <div className="space-y-1.5">
-                <label className="block text-sm font-semibold text-primary/80 ml-1">Date of Birth</label>
-                <div className="relative group">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40">
-                    <Calendar size={20} />
+                  <div className="flex gap-4 pt-4">
+                    <Button type="button" variant="outline" className="w-1/3" onClick={() => { setStep(1); setErrors({}); }}>
+                      <BackIcon size={18} className={language === 'ar' ? 'ml-2' : 'mr-2'} /> {t.buttons.back}
+                    </Button>
+                    <Button type="submit" isLoading={isLoading} className="flex-1">
+                      {formData.role === 'doctor' ? t.buttons.next : t.buttons.create} <ArrowIcon size={18} className={language === 'ar' ? 'mr-2' : 'ml-2'} />
+                    </Button>
                   </div>
-                  <input
-                    type="text"
-                    value={formData.dateOfBirth}
-                    onChange={handleDateChange}
-                    placeholder="DD / MM / YYYY"
-                    maxLength={10}
-                    className={`w-full bg-surface-muted border-2 rounded-xl py-3 pl-12 pr-4 outline-none transition-all duration-300 font-medium text-primary placeholder:text-primary/30
-                    ${errors.dateOfBirth 
-                      ? 'border-red-300 bg-red-50/50 focus:border-red-500' 
-                      : 'border-transparent focus:border-accent focus:bg-white'}`}
-                  />
+                </form>
+              )}
+
+              {step === 3 && formData.role === 'doctor' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                        <Clock className="text-blue-600 shrink-0 mt-1" size={20} />
+                        <div>
+                            <h4 className="font-bold text-blue-800 text-sm">{t.schedule.title}</h4>
+                            <p className="text-xs text-blue-600 mt-1">{t.schedule.desc}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                        {schedule.map((day, index) => (
+                            <div key={day.day} className={`flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border transition-all 
+                                ${day.isActive ? 'border-primary/40 bg-primary/5' : 'border-gray-100 bg-white opacity-70'}`}>
+                                <label className="flex items-center gap-2 w-32 cursor-pointer">
+                                    <input type="checkbox" checked={day.isActive} onChange={() => toggleDay(index)} className="w-4 h-4 accent-primary cursor-pointer" />
+                                    <span className={`font-bold text-sm ${day.isActive ? 'text-primary' : 'text-gray-500'}`}>
+                                        {daysMap[language][day.day] || day.day}
+                                    </span>
+                                </label>
+                                <div className="flex items-center gap-2 flex-1">
+                                    <input type="time" value={day.startTime} onChange={(e) => updateTime(index, 'startTime', e.target.value)} disabled={!day.isActive} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-primary disabled:bg-gray-50" />
+                                    <span className="text-gray-300 text-xs">-</span>
+                                    <input type="time" value={day.endTime} onChange={(e) => updateTime(index, 'endTime', e.target.value)} disabled={!day.isActive} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-primary disabled:bg-gray-50" />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex gap-4 pt-2">
+                        <Button type="button" variant="outline" className="w-1/3" onClick={() => setStep(2)}>
+                            <BackIcon size={18} className={language === 'ar' ? 'ml-2' : 'mr-2'} /> {t.buttons.back}
+                        </Button>
+                        <Button onClick={handleSubmit} isLoading={isLoading} className="flex-1">
+                            {t.buttons.finish} <CheckCircle2 size={18} className={language === 'ar' ? 'mr-2' : 'ml-2'} />
+                        </Button>
+                    </div>
                 </div>
-                {errors.dateOfBirth && <p className="text-xs font-medium text-red-500 ml-1">{errors.dateOfBirth}</p>}
-              </div>
-            )}
+              )}
 
-            {/* Gender */}
-            <div>
-              <label className="block text-sm font-semibold text-primary/80 mb-2 ml-1">Gender</label>
-              <div className="grid grid-cols-2 gap-4">
-                {['Male', 'Female'].map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => {
-                      setFormData({ ...formData, gender: g });
-                      if(errors.gender) setErrors({...errors, gender: ''});
-                    }}
-                    className={`py-3 rounded-xl border-2 font-medium transition-all flex items-center justify-center gap-2
-                    ${formData.gender === g 
-                      ? 'border-accent bg-accent/5 text-accent ring-2 ring-accent/20' 
-                      : 'border-surface-muted text-slate-400 hover:border-slate-300'}`}
-                  >
-                    {g === 'Male' ? <User size={18} /> : <User size={18} />} {g}
-                  </button>
-                ))}
-              </div>
-              {errors.gender && <p className="text-xs font-medium text-red-500 ml-1 mt-1">{errors.gender}</p>}
-            </div>
-
-            {/* Doctor Specific */}
-            {formData.role === 'doctor' && (
-              <div className="p-5 bg-accent/5 rounded-2xl border border-accent/10 space-y-4 animate-in fade-in">
-                <h4 className="text-xs font-bold text-accent uppercase tracking-wider flex items-center gap-2">
-                  <CheckCircle2 size={14} /> Professional Verification
-                </h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Input 
-                    label="Medical Specialty" 
-                    name="specialty"
-                    placeholder="e.g. Oncologist" 
-                    value={formData.specialty} 
-                    onChange={handleChange}
-                    error={errors.specialty}
-                    icon={Stethoscope}
-                  />
-                  <Input 
-                    label="License Number" 
-                    name="licenseNumber"
-                    placeholder="MD-123456" 
-                    value={formData.licenseNumber} 
-                    onChange={handleChange}
-                    error={errors.licenseNumber}
-                    icon={CheckCircle2}
-                  />
+              {!isSuccess && (
+                <div className="mt-8 text-center text-sm text-gray-500 font-medium">
+                    {t.footer.text} <Link to="/login" className="text-primary font-bold hover:underline">{t.footer.link}</Link>
                 </div>
-                <Input 
-                  label="Clinic / Hospital Name & Address" 
-                  name="clinicAddress"
-                  placeholder="e.g. Cairo City Hospital, Main St." 
-                  value={formData.clinicAddress} 
-                  onChange={handleChange}
-                  error={errors.clinicAddress}
-                  icon={MapPin}
-                />
-              </div>
-            )}
-
-            {/* Password */}
-            <div className="grid md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <Input 
-                label="Password" 
-                name="password"
-                type="password" 
-                placeholder="••••••••" 
-                value={formData.password} 
-                onChange={handleChange}
-                error={errors.password}
-                icon={Lock}
-              />
-              <Input 
-                label="Confirm Password" 
-                name="confirmPassword"
-                type="password" 
-                placeholder="••••••••" 
-                value={formData.confirmPassword} 
-                onChange={handleChange}
-                error={errors.confirmPassword}
-                icon={Lock}
-              />
-            </div>
-
-            <div className="flex gap-4 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-1/3"
-                onClick={() => { setStep(1); setError(''); }}
-              >
-                <ArrowLeft size={18} /> Back
-              </Button>
-              <Button type="submit" isLoading={isLoading} className="flex-1">
-                Create Account <ArrowRight size={18} />
-              </Button>
-            </div>
-          </form>
-        )}
-
-        <div className="mt-8 text-center text-sm text-primary/60">
-          Already have an account?{' '}
-          <Link to="/login" className="text-accent font-semibold hover:underline">Sign In</Link>
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      <div className="hidden lg:flex relative bg-primary items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=2068&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
+        <div className="relative z-10 p-12 text-white max-w-lg text-center">
+            <h2 className="text-4xl font-bold mb-6">MedVision</h2>
+            <p className="text-blue-100 text-lg leading-relaxed">
+                {language === 'ar' 
+                    ? 'سواء كنت مريضاً تبحث عن رعاية أو طبيباً يقدمها، نحن هنا لنسهل رحلتك العلاجية بأحدث تقنيات الذكاء الاصطناعي.'
+                    : 'Whether you are a patient seeking care or a doctor providing it, we are here to facilitate your journey with the latest AI technologies.'}
+            </p>
+        </div>
+      </div>
+
     </div>
   );
 }
