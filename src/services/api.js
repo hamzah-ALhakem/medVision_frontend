@@ -1,22 +1,16 @@
-// src/services/api.js (النسخة الحقيقية للاتصال بالسيرفر)
+// src/services/api.js
 import axios from 'axios';
 
-// إعداد الاتصال الأساسي
+// 🟢 التغيير هنا: نقرأ الرابط من متغيرات البيئة
+// في Vercel سيأخذ الرابط الحقيقي، وفي جهازك سيأخذ localhost
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api', // رابط السيرفر الخاص بنا
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
-
-
-
-
-
-
-
-
-
 
 // --- Interceptors (لتمرير التوكن تلقائياً) ---
 api.interceptors.request.use(
