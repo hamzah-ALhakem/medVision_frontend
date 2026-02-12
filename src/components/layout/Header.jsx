@@ -77,7 +77,7 @@ export default function Header({ user, onMenuClick }) {
         </button>
         <div className="hidden md:block">
           <h2 className="text-lg font-bold text-dark flex items-center gap-2">
-            مرحباً، <span className="text-primary">{firstName}</span> 👋
+            مرحباً، <span className="text-primary">{firstName}</span> 
           </h2>
           <p className="text-xs text-gray-400 font-medium">
             {new Date().toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })}

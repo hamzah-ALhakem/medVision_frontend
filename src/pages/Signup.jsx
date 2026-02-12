@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
-  User, Stethoscope, ArrowRight, ArrowLeft, CheckCircle2, 
-  AlertCircle, Mail, Lock, MapPin, Clock, Globe 
+import {
+  User, Stethoscope, ArrowRight, ArrowLeft, CheckCircle2,
+  AlertCircle, Mail, Lock, MapPin, Clock, Globe
 } from 'lucide-react';
 import api from '../services/api';
 import Button from '../components/ui/Button';
@@ -153,7 +153,7 @@ export default function Signup() {
     else if (!egyptPhoneRegex.test(formData.phone)) newErrors.phone = t.errors.phoneInv;
     if (formData.password.length < 6) newErrors.password = t.errors.passLen;
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = t.errors.passMatch;
-    
+
     if (formData.role === 'doctor') {
       if (!formData.specialty) newErrors.specialty = t.errors.specialty;
       if (!formData.licenseNumber) newErrors.licenseNumber = t.errors.license;
@@ -164,20 +164,20 @@ export default function Signup() {
   };
 
   const validateStep3 = () => {
-      const activeDays = schedule.filter(s => s.isActive);
-      if (activeDays.length === 0) {
-          setErrors({ global: t.errors.schedule });
-          return false;
-      }
-      return true;
+    const activeDays = schedule.filter(s => s.isActive);
+    if (activeDays.length === 0) {
+      setErrors({ global: t.errors.schedule });
+      return false;
+    }
+    return true;
   };
 
   const handleNext = (e) => {
     e.preventDefault();
     if (step === 2) {
-        if (!validateStep2()) return;
-        if (formData.role === 'doctor') setStep(3);
-        else handleSubmit();
+      if (!validateStep2()) return;
+      if (formData.role === 'doctor') setStep(3);
+      else handleSubmit();
     }
   };
 
@@ -192,9 +192,9 @@ export default function Signup() {
         phone: `+20${formData.phone}`,
         schedule: formData.role === 'doctor' ? schedule.filter(s => s.isActive) : []
       };
-      
+
       await api.post('/auth/register', submissionData);
-      
+
       if (formData.role === 'doctor') setIsSuccess(true);
       else navigate('/login');
 
@@ -206,7 +206,7 @@ export default function Signup() {
   };
 
   const RoleCard = ({ role, icon: Icon, title, desc }) => (
-    <div 
+    <div
       onClick={() => { setFormData({ ...formData, role }); setStep(2); setErrors({}); }}
       className={`cursor-pointer p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center text-center gap-4 group hover:shadow-lg
       ${formData.role === role ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'border-gray-100 bg-white hover:border-primary/30'}`}
@@ -226,30 +226,30 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-white" dir={language === 'ar' ? 'rtl' : 'ltr'}>
-      
+
       <div className="flex flex-col justify-center items-center p-6 sm:p-12 overflow-y-auto relative">
-        
+
         {/* Lang Switcher */}
         <button onClick={toggleLanguage} className="absolute top-6 right-6 flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">
-            <Globe size={20} />
-            <span className="text-sm font-bold">{language === 'ar' ? 'English' : 'عربي'}</span>
+          <Globe size={20} />
+          <span className="text-sm font-bold">{language === 'ar' ? 'English' : 'عربي'}</span>
         </button>
 
         <div className="w-full max-w-lg space-y-8">
-          
+
           {isSuccess ? (
-              <div className="text-center animate-in zoom-in duration-300">
-                  <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <CheckCircle2 size={48} className="text-green-600" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-dark mb-3">{t.success.title}</h2>
-                  <p className="text-gray-500 mb-8 leading-relaxed">
-                      {t.success.desc.replace('{name}', formData.fullName)}
-                  </p>
-                  <Button onClick={() => navigate('/login')} className="w-full">
-                      {t.buttons.returnLogin}
-                  </Button>
+            <div className="text-center animate-in zoom-in duration-300">
+              <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 size={48} className="text-green-600" />
               </div>
+              <h2 className="text-2xl font-bold text-dark mb-3">{t.success.title}</h2>
+              <p className="text-gray-500 mb-8 leading-relaxed">
+                {t.success.desc.replace('{name}', formData.fullName)}
+              </p>
+              <Button onClick={() => navigate('/login')} className="w-full">
+                {t.buttons.returnLogin}
+              </Button>
+            </div>
           ) : (
             <>
               <div className="text-center">
@@ -261,8 +261,8 @@ export default function Signup() {
                   {step === 3 && t.steps[3]}
                 </p>
                 <div className="w-full h-1.5 bg-gray-100 mt-6 rounded-full overflow-hidden" dir="ltr">
-                  <div className="h-full bg-primary transition-all duration-500 ease-out" 
-                       style={{ width: step === 1 ? '33%' : step === 2 ? '66%' : '100%' }} />
+                  <div className="h-full bg-primary transition-all duration-500 ease-out"
+                    style={{ width: step === 1 ? '33%' : step === 2 ? '66%' : '100%' }} />
                 </div>
               </div>
 
@@ -283,7 +283,7 @@ export default function Signup() {
                 <form onSubmit={handleNext} className="space-y-5 animate-in fade-in slide-in-from-right-4">
                   <Input label={t.labels.fullName} name="fullName" placeholder={t.labels.fullNamePH} value={formData.fullName} onChange={handleChange} error={errors.fullName} icon={User} />
                   <Input label={t.labels.email} name="email" type="email" placeholder={t.labels.emailPH} value={formData.email} onChange={handleChange} error={errors.email} icon={Mail} />
-                  
+
                   <div className="space-y-1.5">
                     <label className="block text-sm font-bold text-gray-700 mx-1">{t.labels.phone}</label>
                     <div className="flex gap-2" dir="ltr">
@@ -334,47 +334,47 @@ export default function Signup() {
 
               {step === 3 && formData.role === 'doctor' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                        <Clock className="text-blue-600 shrink-0 mt-1" size={20} />
-                        <div>
-                            <h4 className="font-bold text-blue-800 text-sm">{t.schedule.title}</h4>
-                            <p className="text-xs text-blue-600 mt-1">{t.schedule.desc}</p>
-                        </div>
+                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                    <Clock className="text-blue-600 shrink-0 mt-1" size={20} />
+                    <div>
+                      <h4 className="font-bold text-blue-800 text-sm">{t.schedule.title}</h4>
+                      <p className="text-xs text-blue-600 mt-1">{t.schedule.desc}</p>
                     </div>
+                  </div>
 
-                    <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
-                        {schedule.map((day, index) => (
-                            <div key={day.day} className={`flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border transition-all 
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                    {schedule.map((day, index) => (
+                      <div key={day.day} className={`flex flex-col sm:flex-row items-center gap-3 p-3 rounded-xl border transition-all 
                                 ${day.isActive ? 'border-primary/40 bg-primary/5' : 'border-gray-100 bg-white opacity-70'}`}>
-                                <label className="flex items-center gap-2 w-32 cursor-pointer">
-                                    <input type="checkbox" checked={day.isActive} onChange={() => toggleDay(index)} className="w-4 h-4 accent-primary cursor-pointer" />
-                                    <span className={`font-bold text-sm ${day.isActive ? 'text-primary' : 'text-gray-500'}`}>
-                                        {daysMap[language][day.day] || day.day}
-                                    </span>
-                                </label>
-                                <div className="flex items-center gap-2 flex-1">
-                                    <input type="time" value={day.startTime} onChange={(e) => updateTime(index, 'startTime', e.target.value)} disabled={!day.isActive} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-primary disabled:bg-gray-50" />
-                                    <span className="text-gray-300 text-xs">-</span>
-                                    <input type="time" value={day.endTime} onChange={(e) => updateTime(index, 'endTime', e.target.value)} disabled={!day.isActive} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-primary disabled:bg-gray-50" />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                        <label className="flex items-center gap-2 w-32 cursor-pointer">
+                          <input type="checkbox" checked={day.isActive} onChange={() => toggleDay(index)} className="w-4 h-4 accent-primary cursor-pointer" />
+                          <span className={`font-bold text-sm ${day.isActive ? 'text-primary' : 'text-gray-500'}`}>
+                            {daysMap[language][day.day] || day.day}
+                          </span>
+                        </label>
+                        <div className="flex items-center gap-2 flex-1">
+                          <input type="time" value={day.startTime} onChange={(e) => updateTime(index, 'startTime', e.target.value)} disabled={!day.isActive} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-primary disabled:bg-gray-50" />
+                          <span className="text-gray-300 text-xs">-</span>
+                          <input type="time" value={day.endTime} onChange={(e) => updateTime(index, 'endTime', e.target.value)} disabled={!day.isActive} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold outline-none focus:border-primary disabled:bg-gray-50" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-                    <div className="flex gap-4 pt-2">
-                        <Button type="button" variant="outline" className="w-1/3" onClick={() => setStep(2)}>
-                            <BackIcon size={18} className={language === 'ar' ? 'ml-2' : 'mr-2'} /> {t.buttons.back}
-                        </Button>
-                        <Button onClick={handleSubmit} isLoading={isLoading} className="flex-1">
-                            {t.buttons.finish} <CheckCircle2 size={18} className={language === 'ar' ? 'mr-2' : 'ml-2'} />
-                        </Button>
-                    </div>
+                  <div className="flex gap-4 pt-2">
+                    <Button type="button" variant="outline" className="w-1/3" onClick={() => setStep(2)}>
+                      <BackIcon size={18} className={language === 'ar' ? 'ml-2' : 'mr-2'} /> {t.buttons.back}
+                    </Button>
+                    <Button onClick={handleSubmit} isLoading={isLoading} className="flex-1">
+                      {t.buttons.finish} <CheckCircle2 size={18} className={language === 'ar' ? 'mr-2' : 'ml-2'} />
+                    </Button>
+                  </div>
                 </div>
               )}
 
               {!isSuccess && (
                 <div className="mt-8 text-center text-sm text-gray-500 font-medium">
-                    {t.footer.text} <Link to="/login" className="text-primary font-bold hover:underline">{t.footer.link}</Link>
+                  {t.footer.text} <Link to="/login" className="text-primary font-bold hover:underline">{t.footer.link}</Link>
                 </div>
               )}
             </>
@@ -385,12 +385,12 @@ export default function Signup() {
       <div className="hidden lg:flex relative bg-primary items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1629909613654-28e377c37b09?q=80&w=2068&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
         <div className="relative z-10 p-12 text-white max-w-lg text-center">
-            <h2 className="text-4xl font-bold mb-6">MedVision</h2>
-            <p className="text-blue-100 text-lg leading-relaxed">
-                {language === 'ar' 
-                    ? 'سواء كنت مريضاً تبحث عن رعاية أو طبيباً يقدمها، نحن هنا لنسهل رحلتك العلاجية بأحدث تقنيات الذكاء الاصطناعي.'
-                    : 'Whether you are a patient seeking care or a doctor providing it, we are here to facilitate your journey with the latest AI technologies.'}
-            </p>
+          <h2 className="text-4xl font-bold mb-6">MedVision</h2>
+          <p className="text-blue-100 text-lg leading-relaxed">
+            {language === 'ar'
+              ? 'سواء كنت مريضاً تبحث عن رعاية أو طبيباً يقدمها، نحن هنا لنسهل رحلتك العلاجية باستخدام تقنيات الذكاء الاصطناعي.'
+              : 'Whether you are a patient seeking care or a doctor providing it, we are here to facilitate your journey using AI technologies.'}
+          </p>
         </div>
       </div>
 

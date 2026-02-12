@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 
 const translations = {
   ar: {
-    title: 'مواعيدي 📅',
+    title: 'مواعيدي ',
     subtitle: 'تتبع حالة حجوزاتك وزياراتك الطبية',
     bookBtn: 'حجز موعد جديد',
     alert: 'يرجى اختيار طبيب من الصفحة الرئيسية للحجز',
@@ -18,7 +18,7 @@ const translations = {
     error: 'فشل تحديث الحالة'
   },
   en: {
-    title: 'My Appointments 📅',
+    title: 'My Appointments ',
     subtitle: 'Track your bookings and medical visits',
     bookBtn: 'Book New Appointment',
     alert: 'Please select a doctor from the home page to book.',
@@ -109,11 +109,7 @@ export default function Appointments() {
           <p className="text-gray-500 text-sm mt-1">{t.subtitle}</p>
         </div>
         
-        {isPatient && (
-          <Button className="w-full md:w-auto shadow-lg shadow-primary/20" onClick={() => alert(t.alert)}>
-             {t.bookBtn} <Plus size={18} className={language === 'ar' ? "mr-1" : "ml-1"} />
-          </Button>
-        )}
+        
       </div>
 
       {/* Tabs */}

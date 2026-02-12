@@ -46,7 +46,7 @@ export default function DashboardLayout() {
       { name: 'الرئيسية', path: '/patient-dashboard', icon: LayoutDashboard },
       { name: 'الأطباء', path: '/patient-dashboard', icon: Calendar }, // يمكن توجيهها للبحث
       { name: 'الفحص الذكي', path: '/screening', icon: FileText },
-      { name: 'المعامل', path: '/labs', icon: FlaskConical },
+      // { name: 'المعامل', path: '/labs', icon: FlaskConical },
       { name: 'حجوزاتي', path: '/appointments', icon: Calendar },
       { name: 'الرسائل', path: '/messages', icon: MessageSquare },
       { name: 'الإعدادات', path: '/settings', icon: Settings },

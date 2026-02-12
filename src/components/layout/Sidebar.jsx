@@ -23,7 +23,7 @@ export default function Sidebar({ role, isOpen, onClose }) {
   const patientLinks = [
     { name: 'الرئيسية', path: '/patient-dashboard', icon: LayoutDashboard },
     { name: 'الفحص الذكي', path: '/screening', icon: Stethoscope },
-    { name: 'المعامل', path: '/labs', icon: FlaskConical },
+    // { name: 'المعامل', path: '/labs', icon: FlaskConical  },
     { name: 'الرسائل', path: '/messages', icon: MessageSquare },
     { name: 'الإعدادات', path: '/settings', icon: Settings },
   ];

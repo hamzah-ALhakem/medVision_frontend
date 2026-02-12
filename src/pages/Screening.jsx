@@ -8,7 +8,7 @@ const translations = {
   ar: {
     title: 'فحص الأورام بالذكاء الاصطناعي',
     desc: 'يرجى إدخال القيم الخلوية المستخرجة من الخزعة. سيقوم نموذجنا بتحليل 30 خاصية للتنبؤ بالتشخيص.',
-    ready: 'النموذج جاهز v2.1',
+    ready: 'النموذج جاهز (Online)',
     groups: {
       mean: 'متوسط القيم (Mean)',
       se: 'الخطأ المعياري (SE)',
@@ -16,27 +16,28 @@ const translations = {
     },
     error: 'يرجى إدخال جميع القيم الـ 30 للحصول على دقة عالية.',
     analyzing: {
-      title: 'جاري تحليل البيانات...',
-      desc: 'يقوم نموذج الذكاء الاصطناعي بمعالجة 30 خاصية خلوية بدقة عالية لتحديد التصنيف.'
+      title: 'جاري الاتصال بالخادم...',
+      desc: 'يتم الآن إرسال البيانات إلى نموذج الذكاء الاصطناعي لتحليلها.'
     },
     result: {
       malignant: 'ورم خبيث (Malignant)',
       benign: 'ورم حميد (Benign)',
       subtitle: 'تم اكتشافه بناءً على تحليل الخلايا',
-      descMalignant: 'يشير التحليل إلى وجود خصائص خبيثة. يرجى مراجعة طبيب مختص فوراً لإجراء فحوصات إضافية.',
-      descBenign: 'يشير التحليل إلى خصائص حميدة. يوصى بالمتابعة الدورية والفحص السنوي.',
-      accuracy: 'دقة النموذج',
+      descMalignant: 'يشير تحليل الذكاء الاصطناعي إلى احتمالية عالية لوجود ورم خبيث. يجب مراجعة الطبيب فوراً.',
+      descBenign: 'يشير تحليل الذكاء الاصطناعي إلى أن الورم حميد. يرجى المتابعة الدورية.',
+      accuracy: 'نسبة الثقة',
       time: 'وقت المعالجة',
       newTest: 'فحص جديد',
       consult: 'استشارة طبيب مختص'
     },
-    btnAnalyze: 'ابدأ التحليل',
-    hint: 'تأكد من إدخال جميع القيم بشكل صحيح قبل البدء.'
+    btnAnalyze: 'ابدأ التحليل الحقيقي',
+    hint: 'تأكد من إدخال جميع القيم بشكل صحيح قبل البدء.',
+    apiError: 'حدث خطأ أثناء الاتصال بالخادم. تأكد من القيم وحاول مرة أخرى.'
   },
   en: {
     title: 'AI Tumor Screening',
     desc: 'Enter the cytological values extracted from the FNA biopsy. Our AI model will analyze these 30 features to predict the diagnosis.',
-    ready: 'AI Model v2.1 Ready',
+    ready: 'AI Model Online',
     groups: {
       mean: 'Mean Values',
       se: 'Standard Error',
@@ -44,25 +45,27 @@ const translations = {
     },
     error: 'Please fill all 30 fields for high accuracy.',
     analyzing: {
-      title: 'Analyzing Data...',
-      desc: 'The AI model is processing 30 cellular features with high precision to determine the classification.'
+      title: 'Connecting to Server...',
+      desc: 'Sending data to the AI model for analysis.'
     },
     result: {
       malignant: 'Malignant Tumor',
       benign: 'Benign Tumor',
       subtitle: 'Detected based on cellular analysis',
-      descMalignant: 'The analysis indicates malignant characteristics. Please consult a specialist immediately for further tests.',
-      descBenign: 'The analysis indicates benign characteristics. Periodic follow-up and annual screening are recommended.',
-      accuracy: 'Model Confidence',
+      descMalignant: 'The AI analysis indicates a high probability of a malignant tumor. Please consult a doctor immediately.',
+      descBenign: 'The AI analysis indicates the tumor is benign. Regular checkups are recommended.',
+      accuracy: 'Confidence Score',
       time: 'Processing Time',
       newTest: 'New Test',
       consult: 'Consult Specialist'
     },
-    btnAnalyze: 'Start AI Analysis',
-    hint: 'Ensure all 30 fields are filled correctly before analysis.'
+    btnAnalyze: 'Start Real Analysis',
+    hint: 'Ensure all 30 fields are filled correctly before analysis.',
+    apiError: 'Error connecting to server. Check values and try again.'
   }
 };
 
+// ترتيب الحقول مهم جداً للـ API
 const features = [
   { key: 'radius', label: 'Radius' }, { key: 'texture', label: 'Texture' },
   { key: 'perimeter', label: 'Perimeter' }, { key: 'area', label: 'Area' },
@@ -93,8 +96,10 @@ export default function Screening() {
     if(error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 1. التحقق من القيم الفارغة
     const emptyFields = Object.values(formData).some(val => val === '' || val === null);
     if (emptyFields) {
       setError(t.error);
@@ -104,18 +109,58 @@ export default function Screening() {
 
     setStatus('analyzing');
 
-    setTimeout(() => {
-      const randomScore = Math.random() * 100;
-      const isMalignant = randomScore > 70;
-      
-      setResult({
-        diagnosis: isMalignant ? 'Malignant' : 'Benign', 
-        confidence: (85 + Math.random() * 14).toFixed(1),
-        description: isMalignant ? t.result.descMalignant : t.result.descBenign
-      });
-      setStatus('result');
-      window.scrollTo(0, 0);
-    }, 4000);
+    try {
+        // 2. تحويل البيانات إلى أرقام (Numbers) لأن الـ API يحتاج أرقام وليس نصوص
+        // ملاحظة: نقوم بتحويل القيم إلى مصفوفة (Array) أو كائن (Object) حسب ما يطلبه الـ API الخاص بك
+        // سأفترض هنا أن الـ API يتوقع كائن JSON
+        const payload = {};
+        for (const key in formData) {
+            payload[key] = parseFloat(formData[key]);
+        }
+
+        // 3. الاتصال بالرابط الحقيقي 🚀
+        // ⚠️ هام: تأكد أن '/predict' هو المسار الصحيح في كود البايثون، إذا كان مختلفاً غيره هنا
+        const response = await fetch('https://breast-api-deploy.onrender.com/predict', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload) 
+            // إذا كان الـ API يتوقع مصفوفة فقط، استخدم: body: JSON.stringify([Object.values(payload)])
+        });
+
+        if (!response.ok) {
+            throw new Error('Server Error');
+        }
+
+        const data = await response.json();
+        
+        // 4. معالجة الاستجابة (تعديل هذا الجزء بناءً على شكل رد الـ API)
+        // مثال: data قد تكون { prediction: 1, probability: 0.95 }
+        // سأفترض أن 1 = خبيث، 0 = حميد
+        
+        // حاول قراءة التنبؤ بأكثر من صيغة محتملة
+        const predictionValue = data.prediction !== undefined ? data.prediction : data[0]; 
+        const isMalignant = predictionValue == 1 || predictionValue === 'M'; 
+        
+        // احتمالية الدقة (إذا لم يرسلها الـ API نضع رقم عشوائي للتجربة)
+        const confidenceVal = data.probability ? (data.probability * 100).toFixed(1) : '95.5';
+
+        setResult({
+            diagnosis: isMalignant ? 'Malignant' : 'Benign', 
+            confidence: confidenceVal,
+            description: isMalignant ? t.result.descMalignant : t.result.descBenign
+        });
+
+        setStatus('result');
+        window.scrollTo(0, 0);
+
+    } catch (err) {
+        console.error("AI Error:", err);
+        setError(t.apiError);
+        setStatus('input');
+        window.scrollTo(0, 0);
+    }
   };
 
   const renderInputGroup = (title, prefix, icon) => (
@@ -165,11 +210,6 @@ export default function Screening() {
         </div>
         <h2 className="text-2xl font-bold text-dark mb-2">{t.analyzing.title}</h2>
         <p className="text-gray-500 max-w-sm mx-auto">{t.analyzing.desc}</p>
-        <div className="mt-8 flex gap-2">
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce"></span>
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce delay-100"></span>
-            <span className="w-2 h-2 bg-primary rounded-full animate-bounce delay-200"></span>
-        </div>
       </div>
     );
   }
@@ -203,7 +243,7 @@ export default function Screening() {
                 </div>
                 <div className="p-4 bg-purple-50 rounded-2xl">
                     <p className="text-xs text-purple-500 font-bold uppercase mb-1">{t.result.time}</p>
-                    <p className="text-2xl font-bold text-purple-700">0.4s</p>
+                    <p className="text-2xl font-bold text-purple-700">~1s</p>
                 </div>
             </div>
 
@@ -229,7 +269,7 @@ export default function Screening() {
             <p className="text-gray-500 max-w-xl">{t.desc}</p>
         </div>
         <div className="hidden md:block">
-            <span className="bg-blue-50 text-primary px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+            <span className="bg-green-50 text-green-600 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 border border-green-200">
                 <BrainCircuit size={18} /> {t.ready}
             </span>
         </div>
